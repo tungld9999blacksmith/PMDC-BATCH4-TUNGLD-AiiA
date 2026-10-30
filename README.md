@@ -274,53 +274,7 @@ Phần này xác định hệ thống phải cung cấp chức năng gì, ai tư
 
 ### 2.1. Product Mind Map
 
-```mermaid
-mindmap
-  root((AiiA))
-    Tài khoản và quyền
-      Đăng nhập SSO
-      Đăng xuất
-      Hồ sơ và quyền của tôi
-    Tích hợp dữ liệu
-      Đăng ký nguồn được phép
-      Upload file mẫu
-      Lập lịch ingest
-      Giám sát lần chạy
-      Ánh xạ schema
-      Khám phá dữ liệu theo lớp
-    Hồ sơ 360°
-      Đối soát danh tính
-      Tìm kiếm hồ sơ
-      Hồ sơ sinh viên
-      Hồ sơ giảng viên
-      Hồ sơ cán bộ
-      Dòng thời gian
-      Nguồn gốc thuộc tính
-    Chất lượng dữ liệu
-      Định nghĩa quy tắc
-      Kiểm tra tự động và cách ly
-      Điểm chất lượng
-      Xử lý issue
-    Quản trị dữ liệu
-      Data catalog
-      Phân loại nhạy cảm và glossary
-      Yêu cầu và phê duyệt truy cập
-      Người dùng và vai trò
-      Nhật ký kiểm toán
-    BI và báo cáo
-      Thư viện dashboard
-      Xem dashboard
-      Thiết kế dashboard
-      Export có watermark
-      Publish và chia sẻ
-    Nâng cao
-      Lineage và impact analysis
-      Phân quyền dòng và cột
-      Phát hiện bất thường
-      Semantic model
-      Báo cáo tự động
-      Trợ lý hỏi đáp
-```
+![Product Mind Map](./assets/product-mind-map.png)
 
 | Nhóm nghiệp vụ | Mô tả |
 | --- | --- |
@@ -708,55 +662,7 @@ stateDiagram-v2
 
 Ứng dụng là một **web app nội bộ** (không có khu vực công khai ngoài trang đăng nhập). Điều hướng chính chia thành 6 khu vực; mỗi khu vực chỉ hiển thị với vai trò tương ứng.
 
-```mermaid
-flowchart TB
-    ROOT["AiiA"]
-
-    ROOT --> SYS["Hệ thống & chung"]
-    ROOT --> PRO["Hồ sơ 360°"]
-    ROOT --> ANA["Phân tích & BI"]
-    ROOT --> INT["Tích hợp dữ liệu"]
-    ROOT --> GOV["Quản trị dữ liệu"]
-    ROOT --> ADM["Quản trị hệ thống"]
-
-    SYS --> P01["P01 Đăng nhập"]
-    SYS --> P02["P02 Trang chủ theo vai trò"]
-    SYS --> P03["P03 Hồ sơ & quyền của tôi"]
-    SYS --> P04["P04 Không có quyền 403"]
-
-    PRO --> P05["P05 Tìm kiếm hồ sơ 360°"]
-    P05 --> P06["P06 Chi tiết hồ sơ 360°<br/>SV / GV / CB"]
-
-    ANA --> P07["P07 Thư viện dashboard"]
-    P07 --> P08["P08 Xem dashboard"]
-    P07 --> P09["P09 Thiết kế dashboard"]
-    ANA --> P10["P10 Semantic model [ADV]"]
-    ANA --> P11["P11 Báo cáo tự động [ADV]"]
-    ANA --> P12["P12 Trợ lý hỏi-đáp [ADV]"]
-
-    INT --> P13["P13 Nguồn dữ liệu"]
-    P13 --> P14["P14 Đăng ký / cấu hình nguồn"]
-    INT --> P15["P15 Giám sát pipeline"]
-    INT --> P16["P16 Data explorer"]
-
-    GOV --> P17["P17 Data catalog"]
-    P17 --> P18["P18 Chi tiết dataset"]
-    GOV --> P19["P19 Quy tắc chất lượng"]
-    GOV --> P20["P20 Chất lượng & issue"]
-    GOV --> P21["P21 Đối soát danh tính"]
-    GOV --> P22["P22 Lineage [ADV]"]
-    GOV --> P23["P23 Cảnh báo bất thường [ADV]"]
-    GOV --> P24["P24 Yêu cầu truy cập"]
-
-    ADM --> P25["P25 Người dùng & vai trò"]
-    ADM --> P26["P26 Chính sách phân quyền [ADV]"]
-    ADM --> P27["P27 Nhật ký kiểm toán"]
-
-    classDef adv stroke-dasharray: 5 5
-    class P10,P11,P12,P22,P23,P26 adv
-```
-
-> Nút viền nét đứt là trang thuộc phạm vi nâng cao [ADV].
+![Sitemap – Cây phân cấp Page AiiA](<./assets/AiiA – Nền tảng Data Lakehouse hồ sơ 360°.png>)
 
 ### 3.2. Phân cấp thông tin trong Page (Page → Section → Thành phần)
 

@@ -662,7 +662,7 @@ stateDiagram-v2
 
 Ứng dụng là một **web app nội bộ** (không có khu vực công khai ngoài trang đăng nhập). Điều hướng chính chia thành 6 khu vực; mỗi khu vực chỉ hiển thị với vai trò tương ứng.
 
-![Sitemap – Cây phân cấp Page AiiA](<./assets/AiiA – Nền tảng Data Lakehouse hồ sơ 360°.png>)
+![Sitemap – Cây phân cấp Page AiiA](<./assets/aiia_sitemap.png>)
 
 ### 3.2. Phân cấp thông tin trong Page (Page → Section → Thành phần)
 

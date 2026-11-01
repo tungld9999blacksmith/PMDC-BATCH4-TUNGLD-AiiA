@@ -22,7 +22,7 @@ cd src/pipelines && uv sync && uv run dagster dev -m aiia_dagster.definitions
 
 Cập nhật dependency: sửa `pyproject.toml` rồi chạy `uv lock` (không sửa tay `uv.lock`).
 
-Frontend: `cd src/frontend && npm install && npx ng build` (đã kiểm chứng build production).
+Frontend: xem [§3](#3-frontend).
 
 ## 2. Chạy bằng Docker Compose
 
@@ -60,7 +60,33 @@ Kiểm tra cấu hình mà không cần khởi động:
 docker compose --profile source --profile lakehouse --profile app --profile bi --profile obs --profile cdc config --quiet
 ```
 
-## 3. Dockerfile
+## 3. Frontend
+
+```bash
+cd src/frontend
+npm install
+npm start          # http://localhost:4200
+npm test           # unit test + smoke test mọi route (Karma, trình duyệt headless)
+npx ng build       # build production vào dist/aiia-web
+npm run gen:api    # sinh lại src/app/core/api/schema.d.ts khi openapi.yaml đổi
+```
+
+Giao diện mặc định chạy với **mock API trong trình duyệt** (`useMockApi: true` trong `src/environments/`), nên không cần backend hay Docker để dùng thử. Dữ liệu là bộ tổng hợp sinh cố định khi tải trang; tải lại trang sẽ đặt lại mọi thay đổi. Riêng `/health` luôn gọi backend thật (trang chủ hiển thị trạng thái API).
+
+Đăng nhập ở `/login` bằng một tài khoản demo:
+
+| Tài khoản | Vai trò (phạm vi) | Nên thử |
+| --- | --- | --- |
+| TS. Hoàng Minh | Người dùng báo cáo (CNTT) | Hồ sơ 360° khoa CNTT, tab Tài chính bị khóa → yêu cầu quyền, dashboard, trợ lý |
+| Nguyễn Thu Hà | Chuyên viên phân tích + báo cáo (toàn trường) | Thiết kế dashboard, semantic model, báo cáo tự động |
+| Trần Quốc Bảo | Quản trị dữ liệu | Duyệt yêu cầu truy cập, quy tắc chất lượng, issue, đối soát danh tính, độ nhạy cột |
+| Phạm Đức Anh | Kỹ sư dữ liệu | Đăng ký nguồn, upload file, mapping, giám sát pipeline, explorer |
+| Lê Thanh Tùng | Quản trị hệ thống | Người dùng & vai trò, chính sách (mô phỏng), nhật ký kiểm toán, chủ đề chặn |
+| Võ Ngọc Yến | Người dùng báo cáo (KT) | So sánh phạm vi dữ liệu với khoa CNTT |
+
+Để gọi Platform API thật, đặt `useMockApi: false`. `npm start` proxy `/api` tới `http://localhost:8000` (`proxy.conf.json`); backend chấp nhận token demo dạng `demo:<userId>` trong môi trường phát triển.
+
+## 4. Dockerfile
 
 Tất cả image Python dùng chung một khuôn (xem `dockerfiles/Dockerfile.backend`):
 
@@ -78,7 +104,7 @@ docker build -f dockerfiles/Dockerfile.web -t aiia-web .
 
 `dockerfiles/Dockerfile.pipelines` chạy `dagster dev` (chế độ phát triển). Production nên tách webserver và daemon.
 
-## 4. Kiểm tra nhanh
+## 5. Kiểm tra nhanh
 
 | Thành phần | Địa chỉ | Kỳ vọng |
 | --- | --- | --- |
@@ -96,10 +122,10 @@ Demo CDC: sau khi bật profile `cdc`, đăng ký connector:
 curl -X POST -H "Content-Type: application/json" --data @infra/debezium/sis-source.json http://localhost:8083/connectors
 ```
 
-## 5. Chưa có hoặc chưa kiểm chứng
+## 6. Chưa có hoặc chưa kiểm chứng
 
 - **Airbyte** không nằm trong compose: bản OSS chạy qua `abctl` trên Kubernetes (kind). Đường ingest hiện tại là dlt. Airbyte có thể bổ sung sau, trỏ vào `mock-source`.
 - **Tiêu thụ CDC** từ Kafka vào Lakehouse chưa được viết: cần sensor hoặc consumer riêng.
-- **Chưa chạy end-to-end** trên Docker: máy phát triển không có Docker daemon khi làm việc này. Đã kiểm chứng: `docker compose config`, `docker buildx build --check` cho bốn Dockerfile, `uv lock`, test backend và mock-source, Dagster load được definitions, `dbt parse`, build Angular production, và PyIceberg SQL catalog trên SQLite cục bộ.
+- **Chưa chạy end-to-end** trên Docker: máy phát triển không có Docker daemon khi làm việc này. Đã kiểm chứng: `docker compose config`, `docker buildx build --check` cho bốn Dockerfile, `uv lock`, test backend và mock-source, Dagster load được definitions, `dbt parse`, build Angular production cùng unit test và smoke test giao diện, và PyIceberg SQL catalog trên SQLite cục bộ.
 - **Tag image** (Trino 470, MinIO, Metabase, Kafka, Debezium) cần kiểm tra trên Docker Hub ở lần pull đầu.
 - **Metabase** cần cài driver Trino riêng; bản chính thức không đi kèm.

@@ -1635,7 +1635,7 @@ PMDC-BATCH4-TUNGLD-AiiA/
 │   └── mock-source/                 # [có] Nguồn giả lập: API + CSDL Postgres (uv)
 ├── src/
 │   ├── database/                    # [có] aiia.dbml, aiia.sql (control plane)
-│   ├── frontend/                    # [có] Angular 19 standalone (skeleton, đã build production)
+│   ├── frontend/                    # [có] Angular 19 standalone, đủ P01–P27, mock API, unit + smoke test
 │   ├── backend/                     # [có] FastAPI Platform API + Celery worker (uv)
 │   └── pipelines/                   # [có] Dagster, dlt, PyIceberg, Soda, dbt-trino (uv)
 ├── compose.yaml                     # [có] Một compose, chia nhóm bằng profiles
@@ -1649,42 +1649,40 @@ PMDC-BATCH4-TUNGLD-AiiA/
 
 ```text
 src/frontend/src/app/
-├── app.config.ts            # Providers, router, HttpClient, OIDC
-├── app.routes.ts            # Route lazy-load; canMatch theo vai trò (roleGuard)
+├── app.config.ts            # Router (input binding), HttpClient + interceptor
+├── app.routes.ts            # Route lazy-load; canMatch theo vai trò (roleGuard), canDeactivate khi chưa lưu
 ├── core/
-│   ├── auth/                # OIDC client, phiên, roleGuard, hasRole
-│   ├── api/                 # Client sinh từ openapi.yaml
-│   ├── interceptors/        # Bearer token, RFC 7807 → thông báo, traceId
-│   └── sse/                 # Đọc luồng SSE (log run, trợ lý)
-├── shared/
-│   ├── layout/              # App shell: topbar, sidebar theo vai trò, breadcrumb, drawer phải
-│   ├── components/          # masked-value, freshness-chip, sensitivity-badge, dq-badge,
-│   │                        # request-access-dialog, provenance-drawer, confirm-dialog,
-│   │                        # filter-bar, data-table, chart (ECharts), state-views
-│   └── pipes/               # Định dạng số/ngày tiếng Việt, "< 5"
-├── features/
-│   ├── home/                # P02
-│   ├── me/                  # P03
-│   ├── profiles/            # P05 search, P06 detail + tabs/*, timeline
-│   ├── dashboards/          # P07 library, P08 viewer, P09 builder
-│   ├── semantic/            # P10 [ADV]
-│   ├── reports/             # P11 [ADV]
-│   ├── assistant/           # P12 [ADV]
-│   ├── sources/             # P13 list, P14 wizard + upload
-│   ├── runs/                # P15
-│   ├── explorer/            # P16
-│   ├── catalog/             # P17, P18, glossary
-│   ├── data-quality/        # P19 rules, P20 scores & issues
-│   ├── identity/            # P21
-│   ├── lineage/             # P22 [ADV] (Cytoscape.js)
-│   ├── alerts/              # P23 [ADV]
-│   ├── access/              # P24
-│   ├── admin/               # P25 users, P26 policies [ADV], P27 audit
-│   └── errors/              # P04 403
-└── styles/                  # Design token: màu trạng thái, mức nhạy cảm, lớp dữ liệu
+│   ├── api/                 # schema.d.ts sinh từ openapi.yaml, models, ApiClient, service theo tag
+│   ├── auth/                # SessionService (signals), guard, tài khoản demo
+│   ├── http/                # Bearer token, RFC 7807 → thông báo
+│   ├── mock/                # Mock API trong trình duyệt: dữ liệu tổng hợp, semantic layer, trợ lý mô phỏng
+│   ├── sse/                 # Đọc luồng SSE bằng fetch (log run, trợ lý)
+│   ├── ui/                  # Toast, hộp thoại xác nhận, yêu cầu quyền
+│   └── util/                # Tìm kiếm không dấu, nhãn tiếng Việt
+├── shared/                  # masked-value, badges (trạng thái, độ nhạy, lớp, độ tươi), data-table,
+│                            # chart (ECharts nạp lười + bảng thay thế), drawer, modal, page-header, pager,
+│                            # state-view, pipes, Loader<T>
+├── shell/                   # App shell: topbar, sidebar theo vai trò, Ctrl+K, thông báo, host hộp thoại
+└── features/
+    ├── auth/  home/  me/  errors/          # P01–P04
+    ├── profiles/            # P05 search, P06 detail + provenance drawer
+    ├── dashboards/          # P07 library, P08 viewer, P09 builder, widget, SemanticCatalog
+    ├── semantic/            # P10 [ADV]
+    ├── reports/             # P11 [ADV]
+    ├── assistant/           # P12 [ADV] + answer-card
+    ├── sources/             # P13 list, P14 wizard + upload
+    ├── runs/                # P15
+    ├── explorer/            # P16
+    ├── catalog/             # P17 (dataset, glossary), P18
+    ├── quality/             # P19 rules, P20 scores & issues
+    ├── identity/            # P21
+    ├── lineage/             # P22 [ADV] (đồ thị SVG phân lớp)
+    ├── alerts/              # P23 [ADV]
+    ├── access/              # P24
+    └── admin/               # P25 users, P26 policies [ADV], P27 audit
 ```
 
-Luồng phụ thuộc: `Page → Feature store (signals) → core/api client → REST / SSE`. Feature không import lẫn nhau; dùng chung qua `shared/`.
+Luồng phụ thuộc: `Page (signals) → core/api service → REST / SSE` (hoặc `core/mock` khi bật mock). Feature dùng chung qua `shared/`; ngoại lệ duy nhất là `SemanticCatalog` của `dashboards/` (danh mục metric và dimension) được trợ lý và trang semantic dùng lại.
 
 ### 7.3. FastAPI Platform API và App Worker
 
@@ -2250,6 +2248,6 @@ sequenceDiagram
 - [x] Skeleton Platform API (health, readiness) với test
 - [ ] Platform API theo OpenAPI, kiểm thử hợp đồng và ma trận quyền
 - [x] Skeleton Angular 19 (standalone, lazy route, gọi health API)
-- [ ] Angular Web App: hồ sơ 360°, dashboard, tích hợp, quản trị dữ liệu
+- [x] Angular Web App: hồ sơ 360°, dashboard, tích hợp, quản trị dữ liệu (P01–P27, chạy trên mock API theo hợp đồng OpenAPI)
 - [ ] [ADV] Semantic model, trợ lý hỏi-đáp, benchmark trong CI
 - [ ] [ADV] Lineage, phát hiện bất thường, báo cáo tự động, chính sách dòng/cột

@@ -152,12 +152,21 @@ WCAG 2.1 AA: tương phản ≥ 4.5:1; màu không là kênh duy nhất; biểu 
 
 ## 7. Màn hình đã dựng (Angular)
 
-Mã nguồn tại [src/frontend](../src/frontend) — Angular 19 standalone, lazy route, chạy bằng `npm start` (proxy `/api` tới Platform API). Hiện mới có khung ứng dụng và trang chủ kiểm tra trạng thái API; các trang P03–P27 chưa dựng. Wireframe của các trang trọng tâm: [README §4.5](../README.md#45-wireframe-các-màn-hình-trọng-tâm).
+Mã nguồn tại [src/frontend](../src/frontend) — Angular 19 standalone, signals, lazy route, `canMatch` theo vai trò. Chạy bằng `npm start`; cách chạy và tài khoản demo ở [RUNNING.md](RUNNING.md#3-frontend).
 
-| Màn hình | Route | Trạng thái |
-| --- | --- | --- |
-| P02 Trang chủ (bản tối thiểu) | `/` | ✅ Gọi `GET /api/v1/health` |
-| P05–P27 | xem sitemap | ⏳ Chưa dựng |
+Mọi màn hình P01–P27 đã dựng và gọi API đúng hợp đồng [openapi.yaml](api/openapi.yaml) (kiểu TypeScript sinh bằng `npm run gen:api`). Vì Platform API mới hiện thực một phần, giao diện mặc định chạy với **mock API trong trình duyệt** (`environment.useMockApi`): một interceptor trả lời theo đúng hợp đồng trên dữ liệu tổng hợp, áp dụng các quy tắc nghiệp vụ chính (RLS theo khoa, che cột, ẩn nhóm < 5, cấp quyền tối đa 180 ngày, không tự duyệt, trợ lý chỉ dùng metric đã chứng nhận). Tắt cờ này để gọi backend thật qua proxy `/api`.
+
+| Nhóm | Màn hình | Route | Trạng thái |
+| --- | --- | --- | --- |
+| Chung | P01 Đăng nhập (chọn tài khoản demo), P02 Trang chủ theo vai trò, P03 Hồ sơ & quyền của tôi, P04 403, 404 | `/login`, `/`, `/me`, `/403` | ✅ |
+| Hồ sơ 360° | P05 Tìm kiếm, P06 Chi tiết (tab theo facet, timeline, nguồn gốc thuộc tính, yêu cầu quyền cho facet bị khóa) | `/profiles`, `/profiles/:personId` | ✅ |
+| BI | P07 Thư viện, P08 Xem (lọc, drill, xuất PDF/CSV, đăng ký), P09 Thiết kế (kéo thả, undo/redo, chia sẻ, xuất bản, xung đột phiên bản 412) | `/dashboards…` | ✅ |
+| Nâng cao | P10 Semantic model, P11 Báo cáo tự động, P12 Trợ lý hỏi-đáp (SSE, làm rõ, từ chối, “Do AI tạo”, xem truy vấn, mở trong dashboard) | `/semantic`, `/reports`, `/assistant` | ✅ |
+| Tích hợp | P13 Nguồn, P14 Wizard 4 bước (căn cứ pháp lý, kết nối/upload kiểm checksum, mapping có xem trước và ảnh hưởng, lịch và kích hoạt), P15 Giám sát pipeline (log trực tiếp, chạy lại, xử lý lại cách ly), P16 Explorer | `/sources…`, `/runs…`, `/explorer` | ✅ |
+| Quản trị dữ liệu | P17 Catalog + glossary, P18 Chi tiết dataset (sửa độ nhạy cột), P19 Quy tắc (chạy thử bắt buộc trước khi kích hoạt), P20 Điểm chất lượng + issue, P21 Đối soát danh tính (phím tắt M/N/S/J/K, tách lại), P22 Lineage (đồ thị SVG + phân tích ảnh hưởng), P23 Cảnh báo bất thường, P24 Yêu cầu truy cập | `/catalog…`, `/quality…`, `/identity`, `/lineage`, `/alerts`, `/access` | ✅ |
+| Quản trị hệ thống | P25 Người dùng & vai trò, P26 Chính sách (mô phỏng “xem như”), P27 Nhật ký kiểm toán, nhật ký trợ lý, chủ đề chặn | `/admin/…` | ✅ |
+
+Kiểm thử: `npm test` chạy unit test (tìm kiếm không dấu, SSE parser, semantic layer, quy tắc của mock API, roleGuard, bố cục dashboard và lineage) và smoke test mở từng route bằng tài khoản có quyền, kiểm tra trang có tiêu đề, không ở trạng thái lỗi/loading và không lỗi runtime.
 
 ## 8. Ánh xạ màn hình ↔ API
 

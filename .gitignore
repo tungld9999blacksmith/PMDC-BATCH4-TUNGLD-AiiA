@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+dist/
+.angular/
+.dagster/
+**/dbt/target/
+**/dbt/logs/
+dbt_packages/
+*.log
+.venv/

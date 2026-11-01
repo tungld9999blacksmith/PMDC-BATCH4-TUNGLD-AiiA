@@ -1,0 +1,87 @@
+Tương tác Front-end\nAiiA
+  Khung ứng dụng
+    Tìm kiếm toàn cục
+      Gợi ý tức thì theo nhóm
+      Phím tắt Ctrl+K
+    Nút "Hỏi AiiA" mở trợ lý
+    Chuông thông báo
+      Run lỗi
+      Yêu cầu được duyệt
+      Cảnh báo mới
+    Menu người dùng
+      Quyền của tôi
+      Đăng xuất
+    Sidebar thu gọn / mở rộng
+    Breadcrumb quay lại
+  Hồ sơ 360°
+    Tìm kiếm có debounce
+    Lọc nhiều tiêu chí
+    Chuyển vai trò SV / GV / CB
+    Chuyển tab khía cạnh
+    Hover biểu tượng nguồn
+    Mở drawer nguồn gốc
+    Lọc và tải thêm timeline
+    Nhấn trường bị khóa → yêu cầu quyền
+    Bỏ che tạm thời khi có quyền
+  Dashboard
+    Chọn bộ lọc toàn cục
+    Đồng bộ bộ lọc vào URL
+    Tooltip trên biểu đồ
+    Nhấn để drill-down
+    Breadcrumb drill
+    Sắp xếp và phân trang bảng
+    Export PDF / CSV
+    Đăng ký định kỳ [ADV]
+    Chia sẻ liên kết
+    Đánh dấu yêu thích
+  Thiết kế dashboard
+    Kéo dataset vào widget
+    Kéo-thả, đổi kích thước widget
+    Panel thuộc tính
+    Hoàn tác / làm lại
+    Xem trước
+    Publish và chia sẻ
+    Cảnh báo rời trang chưa lưu
+  Trợ lý hỏi-đáp [ADV]
+    Nhập câu hỏi
+    Chọn câu hỏi gợi ý
+    Trạng thái "đang phân tích…"
+    Chip làm rõ
+    Xem truy vấn
+    Mở trong dashboard
+    Phản hồi hữu ích / không
+    Yêu cầu quyền khi bị từ chối
+  Tích hợp dữ liệu
+    Wizard 4 bước
+    Kiểm tra kết nối
+    Kéo-thả upload
+    Xem trước 20 dòng
+    Ánh xạ cột kéo-nối
+    Bộ chọn lịch trực quan
+    Chạy ngay / tạm dừng
+    Log trực tiếp
+    Chạy lại run
+  Chất lượng và danh tính
+    Chạy thử quy tắc
+    Bản đồ nhiệt nhấn để xem
+    Thao tác hàng loạt issue
+    Xử lý lại quarantine
+    So sánh song song
+    Gộp / Không trùng / Để sau
+    Phím tắt duyệt nhanh
+    Tách hồ sơ
+  Quản trị và phân quyền
+    Gửi yêu cầu truy cập
+    Duyệt / từ chối kèm lý do
+    Sửa nhãn nhạy cảm trong bảng
+    Gán vai trò và phạm vi
+    Mô phỏng "Xem như" [ADV]
+    So sánh phiên bản chính sách [ADV]
+    Lọc audit log
+  Lineage và cảnh báo [ADV]
+    Phóng to và kéo đồ thị
+    Mở rộng upstream / downstream
+    Chế độ mức cột
+    Phân tích tác động
+    Biểu đồ dải kỳ vọng
+    Xác nhận và đóng cảnh báo

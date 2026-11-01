@@ -1,0 +1,154 @@
+<div class="page">
+  <aiia-page-header title="Hồ sơ 360°" [crumbs]="[{ label: 'Hồ sơ 360°', link: '/profiles' }, { label: 'Chi tiết' }]" />
+
+  @switch (profile.state().status) {
+    @case ('loading') {
+      <div class="card"><aiia-state kind="loading" /></div>
+    }
+    @case ('error') {
+      @if (profile.state().error?.status === 404) {
+        <div class="card">
+          <aiia-state kind="empty" message="Không tìm thấy hồ sơ" detail="Hồ sơ không tồn tại hoặc nằm ngoài phạm vi quyền của bạn." actionLabel="Quay lại tìm kiếm" (action)="router.navigate(['/profiles'])" />
+        </div>
+      } @else {
+        <div class="card"><aiia-state kind="error" [message]="profile.message()" /></div>
+      }
+    }
+    @case ('ready') {
+      @if (profile.state().data; as p) {
+        <section class="card header">
+          <div class="avatar" aria-hidden="true">{{ initials() }}</div>
+          <div class="identity">
+            <div class="row">
+              <h1>{{ p.header?.['fullName']?.value }}</h1>
+              <button type="button" class="link-btn small" (click)="provenanceOf.set('fullName')" title="Xem nguồn gốc">ⓘ nguồn</button>
+            </div>
+            @if ((p.availableRoles ?? []).length > 1) {
+              <div class="row" role="group" aria-label="Chuyển vai trò">
+                <span class="small muted">Vai trò:</span>
+                @for (r of p.availableRoles ?? []; track r) {
+                  <button type="button" class="chip selectable" [class.on]="r === p.activeRole" (click)="switchRole(r)">{{ subjectLabels[r] }}</button>
+                }
+              </div>
+            }
+            <dl class="facts">
+              @for (e of headerEntries(); track e[0]) {
+                <div>
+                  <dt>{{ headerLabels[e[0]] ?? e[0] }}</dt>
+                  <dd>
+                    <aiia-masked [value]="e[1]" />
+                    @if (canProvenance(e[0])) {
+                      <button type="button" class="link-btn small" (click)="provenanceOf.set(e[0])" [attr.aria-label]="'Nguồn gốc ' + (headerLabels[e[0]] ?? e[0])">ⓘ</button>
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </section>
+
+        <div class="grid cols-4 kpis">
+          @for (k of p.kpis ?? []; track k.code) {
+            <div class="card kpi">
+              <span class="label">{{ k.label }}</span>
+              <span class="value"><aiia-masked [value]="k.value" [request]="kpiRequest(k.code)" /></span>
+            </div>
+          }
+        </div>
+
+        <div class="split">
+          <section class="card flush">
+            <div class="tabs" role="tablist">
+              @for (f of p.facets ?? []; track f.code) {
+                <button type="button" role="tab" class="tab" [class.active]="f.code === activeTab()" [attr.aria-selected]="f.code === activeTab()" (click)="selectTab(f.code)">
+                  {{ f.label }}
+                  @if (!f.allowed) {
+                    <span aria-label="bị khóa">🔒</span>
+                  }
+                </button>
+              }
+            </div>
+            <div class="facet">
+              @if (activeFacet(); as f) {
+                <div class="facet-meta"><aiia-freshness [freshness]="f.freshness" /></div>
+              }
+              @if (facetLocked()) {
+                <aiia-state
+                  kind="locked"
+                  message="Bạn chưa có quyền xem tab này"
+                  detail="Dữ liệu tồn tại nhưng được bảo vệ. Gửi yêu cầu có mục đích và thời hạn để Steward phê duyệt."
+                  actionLabel="Yêu cầu quyền"
+                  (action)="requestFacet()"
+                />
+              } @else {
+                @switch (facet.state().status) {
+                  @case ('loading') {
+                    <aiia-state kind="loading" />
+                  }
+                  @case ('error') {
+                    <aiia-state kind="error" [message]="facet.message()" />
+                  }
+                  @case ('ready') {
+                    @if (facet.state().data; as d) {
+                      @if (fieldEntries(d).length) {
+                        <dl class="fields">
+                          @for (e of fieldEntries(d); track e[0]) {
+                            <div>
+                              <dt>{{ e[0] }}</dt>
+                              <dd><aiia-masked [value]="e[1]" /></dd>
+                            </div>
+                          }
+                        </dl>
+                      }
+                      @for (s of d.series ?? []; track s.code) {
+                        <aiia-chart [data]="seriesChart(s)" [height]="220" [ariaLabel]="s.code ?? ''" />
+                      }
+                      @for (t of d.tables ?? []; track t.code) {
+                        <h3 class="table-title">{{ t.title }}</h3>
+                        <aiia-table [data]="t" [caption]="t.title ?? ''" emptyText="Chưa có dữ liệu." />
+                      }
+                      @if (!fieldEntries(d).length && !(d.tables ?? []).length && !(d.series ?? []).length) {
+                        <aiia-state kind="empty" message="Chưa có dữ liệu cho tab này" />
+                      }
+                    }
+                  }
+                }
+              }
+            </div>
+          </section>
+
+          <aside class="card timeline" aria-label="Dòng thời gian">
+            <h2>Dòng thời gian</h2>
+            <div class="row filters">
+              @for (t of eventTypesInTimeline(); track t) {
+                <button type="button" class="chip selectable small" [class.on]="eventFilter().includes(t)" (click)="toggleEvent(t)">{{ eventTypes[t] ?? t }}</button>
+              }
+            </div>
+            <ol class="events">
+              @for (e of visibleTimeline(); track e.eventId) {
+                <li>
+                  <span class="dot" aria-hidden="true"></span>
+                  <div>
+                    <div class="small muted">{{ e.time | viDate }} · {{ e.source }}</div>
+                    <div>{{ e.title }}</div>
+                  </div>
+                </li>
+              } @empty {
+                @if (!timelineLoading()) {
+                  <li class="muted small">Chưa có sự kiện trong phạm vi quyền.</li>
+                }
+              }
+            </ol>
+            @if (timelineNext()) {
+              <button type="button" class="btn sm" [disabled]="timelineLoading()" (click)="loadTimeline()">Tải thêm</button>
+            }
+          </aside>
+        </div>
+
+        @if (provenanceOf(); as attr) {
+          <aiia-provenance-drawer [personId]="personId()" [attribute]="attr" [label]="headerLabels[attr] ?? 'Họ tên'" (closed)="provenanceOf.set(null)" />
+        }
+      }
+    }
+  }
+</div>

@@ -5,7 +5,8 @@
   "scripts": {
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test --watch=false"
+    "test": "ng test --watch=false --browsers=ChromeHeadlessCI",
+    "gen:api": "openapi-typescript ../../docs/api/openapi.yaml --default-non-nullable=false -o src/app/core/api/schema.d.ts"
   },
   "dependencies": {
     "@angular/common": "~19.2.0",
@@ -15,6 +16,7 @@
     "@angular/platform-browser": "~19.2.0",
     "@angular/platform-browser-dynamic": "~19.2.0",
     "@angular/router": "~19.2.0",
+    "echarts": "^5.6.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.8.0",
     "zone.js": "~0.15.0"
@@ -23,6 +25,14 @@
     "@angular-devkit/build-angular": "~19.2.0",
     "@angular/cli": "~19.2.0",
     "@angular/compiler-cli": "~19.2.0",
+    "@types/jasmine": "^5.1.5",
+    "jasmine-core": "^5.5.0",
+    "karma": "^6.4.4",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-coverage": "^2.2.1",
+    "karma-jasmine": "^5.1.0",
+    "karma-jasmine-html-reporter": "^2.1.0",
+    "openapi-typescript": "^7.6.1",
     "typescript": "~5.7.2"
   }
 }

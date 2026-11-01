@@ -1,4 +1,4 @@
--- AiiA — schema CSDL điều khiển (control plane) · PostgreSQL 16
+-- AiiA — schema CSDL điều khiển (control plane) · PostgreSQL 18
 -- Nguồn sự thật mô hình: aiia.dbml. Lớp Gold (Iceberg) không nằm trong file này.
 -- Chạy: psql -v ON_ERROR_STOP=1 -f aiia.sql
 

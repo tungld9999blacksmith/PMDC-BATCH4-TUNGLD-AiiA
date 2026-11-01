@@ -4,7 +4,7 @@ AiiA có hai vùng lưu trữ với vai trò khác nhau:
 
 | Vùng | Công nghệ | Nội dung | Nguồn sự thật |
 | --- | --- | --- | --- |
-| **Control plane** (schema `app`) | PostgreSQL 16 | Người dùng, vai trò, nguồn, lần chạy pipeline, catalog, quy tắc DQ, đối soát danh tính, cấp quyền, chính sách, dashboard, semantic model, cảnh báo, lineage, hỏi-đáp, audit | [aiia.dbml](../src/database/aiia.dbml) · schema chạy được [aiia.sql](../src/database/aiia.sql) |
+| **Control plane** (schema `app`) | PostgreSQL 18 | Người dùng, vai trò, nguồn, lần chạy pipeline, catalog, quy tắc DQ, đối soát danh tính, cấp quyền, chính sách, dashboard, semantic model, cảnh báo, lineage, hỏi-đáp, audit | [aiia.dbml](../src/database/aiia.dbml) · schema chạy được [aiia.sql](../src/database/aiia.sql) |
 | **Lakehouse** (Bronze/Silver/Gold) | MinIO (S3) + Apache Iceberg, truy vấn qua Trino | Dữ liệu nguồn thô, dữ liệu chuẩn hóa, mô hình hồ sơ 360° và mart phân tích | Schema `gold` trong [aiia.dbml](../src/database/aiia.dbml); Silver/Gold được sinh bởi dbt |
 
 > Nguyên tắc: **dữ liệu cá nhân chỉ nằm trong Lakehouse**; PostgreSQL chỉ lưu metadata và tham chiếu (`person_id`, `source_key`). Mọi truy vấn dữ liệu cá nhân đi qua Trino để áp chính sách dòng/cột (BR08).

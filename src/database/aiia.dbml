@@ -1,6 +1,6 @@
 // AiiA — mô hình dữ liệu (DBML)
 // Gồm 2 phần:
-//   1) Schema `app`  : CSDL điều khiển (control plane) — PostgreSQL 16. Schema chạy được: aiia.sql
+//   1) Schema `app`  : CSDL điều khiển (control plane) — PostgreSQL 18. Schema chạy được: aiia.sql
 //   2) Schema `gold` : mô hình phân tích hồ sơ 360° — bảng Apache Iceberg, truy vấn qua Trino.
 // Xem trực quan: dán vào https://dbdiagram.io
 

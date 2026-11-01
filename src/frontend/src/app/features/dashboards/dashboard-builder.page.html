@@ -1,0 +1,198 @@
+<div class="page">
+  @switch (status()) {
+    @case ('loading') {
+      <div class="card"><aiia-state kind="loading" /></div>
+    }
+    @case ('forbidden') {
+      <div class="card"><aiia-state kind="forbidden" message="Chỉ chủ sở hữu được sửa dashboard này" actionLabel="Xem dashboard" (action)="router.navigate(['/dashboards', id()])" /></div>
+    }
+    @case ('error') {
+      <div class="card"><aiia-state kind="error" [message]="errorText()" /></div>
+    }
+    @default {
+      <aiia-page-header title="Thiết kế dashboard" [crumbs]="[{ label: 'Dashboard', link: '/dashboards' }, { label: title() || 'Dashboard mới' }]">
+        <aiia-status [status]="state()" />
+        @if (dirty()) {
+          <span class="chip warn">Chưa lưu</span>
+        }
+        <button type="button" class="btn sm" [disabled]="!canUndo()" (click)="undo()" title="Hoàn tác (Ctrl+Z)">↶</button>
+        <button type="button" class="btn sm" [disabled]="!canRedo()" (click)="redo()" title="Làm lại (Ctrl+Y)">↷</button>
+        <button type="button" class="btn sm" [class.primary]="preview()" (click)="preview.set(!preview())">{{ preview() ? 'Thoát xem trước' : 'Xem trước' }}</button>
+        <button type="button" class="btn sm primary" [disabled]="saving()" (click)="save()">Lưu</button>
+        @if (dashboardId()) {
+          <button type="button" class="btn sm" (click)="shareOpen.set(true)">Chia sẻ</button>
+          @if (state() === 'DRAFT') {
+            <button type="button" class="btn sm" (click)="publish()">Publish</button>
+          } @else {
+            <a class="btn sm" [routerLink]="['/dashboards', dashboardId()]">Mở dashboard</a>
+          }
+        }
+      </aiia-page-header>
+
+      <section class="card meta">
+        <label class="field grow"><span class="small muted">Tiêu đề</span><input class="input" [ngModel]="title()" (ngModelChange)="title.set($event); markDirty()" placeholder="VD: Tổng quan đào tạo" /></label>
+        <label class="field"><span class="small muted">Chủ đề</span>
+          <select class="input" [ngModel]="topic()" (ngModelChange)="topic.set($event); markDirty()">
+            @for (t of topics; track t[0]) {
+              <option [value]="t[0]">{{ t[1] }}</option>
+            }
+          </select>
+        </label>
+        <label class="field grow"><span class="small muted">Mô tả</span><input class="input" [ngModel]="description()" (ngModelChange)="description.set($event); markDirty()" /></label>
+        @if (boardDims().length) {
+          <fieldset class="field filters">
+            <legend class="small muted">Bộ lọc toàn cục</legend>
+            <div class="row">
+              @for (d of boardDims(); track d) {
+                <label class="row small"><input type="checkbox" [checked]="globalFilters().includes(d)" (change)="toggleGlobalFilter(d, $any($event.target).checked)" /> {{ catalog.dimensionName(d) }}</label>
+              }
+            </div>
+          </fieldset>
+        }
+      </section>
+
+      @if (preview()) {
+        <div class="board">
+          @for (w of previewWidgets(); track w.id) {
+            <aiia-widget [style.gridArea]="(w.position.y ?? 0) + 1 + ' / ' + ((w.position.x ?? 0) + 1) + ' / span ' + (w.position.h ?? 1) + ' / span ' + (w.position.w ?? 12)" [widget]="w" />
+          } @empty {
+            <div class="card" style="grid-column: 1 / -1"><aiia-state message="Chưa có widget" /></div>
+          }
+        </div>
+      } @else {
+        <div class="builder">
+          <aside class="card palette" aria-label="Danh sách metric">
+            <h2>Metric</h2>
+            <input class="input" placeholder="Tìm metric…" [ngModel]="metricQuery()" (ngModelChange)="metricQuery.set($event)" aria-label="Tìm metric" />
+            <ul class="metrics">
+              @for (m of metricList(); track m.code) {
+                <li>
+                  <div>
+                    <div>{{ m.name }}</div>
+                    <div class="small muted mono">{{ m.code }} @if (m.status !== 'CERTIFIED') {<span class="chip warn">{{ m.status }}</span>}</div>
+                  </div>
+                  <button type="button" class="btn sm" (click)="addWidget(m)" [attr.aria-label]="'Thêm widget ' + m.name">+</button>
+                </li>
+              }
+            </ul>
+          </aside>
+
+          <section class="canvas" aria-label="Canvas widget">
+            @for (w of widgets(); track w.id; let i = $index) {
+              <div
+                class="tile card"
+                [class.selected]="selected() === i"
+                [style.gridColumn]="'span ' + (w.position.w ?? 6)"
+                [style.gridRow]="'span ' + (w.position.h ?? 2)"
+                draggable="true"
+                (dragstart)="onDragStart(i)"
+                (dragover)="$event.preventDefault()"
+                (drop)="onDrop(i)"
+                (click)="selected.set(i)"
+                tabindex="0"
+                (keydown.enter)="selected.set(i)"
+              >
+                <div class="row between">
+                  <strong>{{ w.title }}</strong>
+                  <span class="row">
+                    <button type="button" class="btn ghost sm" (click)="move(i, -1); $event.stopPropagation()" aria-label="Lên trước">←</button>
+                    <button type="button" class="btn ghost sm" (click)="move(i, 1); $event.stopPropagation()" aria-label="Xuống sau">→</button>
+                    <button type="button" class="btn ghost sm" (click)="removeWidget(i); $event.stopPropagation()" aria-label="Xóa widget">✕</button>
+                  </span>
+                </div>
+                <div class="small muted">{{ typeLabels[w.type] }} · {{ w.querySpec.metrics.join(', ') }}</div>
+                @if ((w.querySpec.dimensions ?? []).length) {
+                  <div class="small muted">theo {{ (w.querySpec.dimensions ?? []).join(' × ') }}</div>
+                }
+                <div class="drag-hint small muted" aria-hidden="true">⠿ kéo để sắp xếp</div>
+              </div>
+            } @empty {
+              <div class="card empty"><aiia-state message="Chưa có widget" detail="Chọn “+” ở danh sách metric để thêm widget đầu tiên." /></div>
+            }
+          </section>
+
+          <aside class="card props" aria-label="Thuộc tính widget">
+            @if (current(); as w) {
+              <h2>Thuộc tính widget</h2>
+              <label class="field"><span class="small muted">Tiêu đề</span><input class="input" [ngModel]="w.title" (change)="setTitle($any($event.target).value)" /></label>
+              <label class="field"><span class="small muted">Loại</span>
+                <select class="input" [ngModel]="w.type" (ngModelChange)="setType($event)">
+                  @for (t of types; track t) {
+                    <option [value]="t">{{ typeLabels[t] }}</option>
+                  }
+                </select>
+              </label>
+              <fieldset class="field">
+                <legend class="small muted">Metric (cùng dataset nền)</legend>
+                @for (m of compatibleMetrics(); track m.code) {
+                  <label class="row small"><input type="checkbox" [checked]="w.querySpec.metrics.includes(m.code ?? '')" (change)="toggleMetric(m.code ?? '', $any($event.target).checked)" /> {{ m.name }}</label>
+                }
+              </fieldset>
+              @if (w.type !== 'KPI') {
+                @for (slot of w.type === 'HEATMAP' || w.type === 'TABLE' ? [0, 1] : [0]; track slot) {
+                  <label class="field"><span class="small muted">Dimension {{ slot + 1 }}</span>
+                    <select class="input" [ngModel]="(w.querySpec.dimensions ?? [])[slot] ?? ''" (ngModelChange)="setDimension(slot, $event)">
+                      <option value="">—</option>
+                      @for (d of allowedDims(); track d) {
+                        <option [value]="d">{{ catalog.dimensionName(d) }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+              }
+              @if (w.type === 'BAR') {
+                <label class="field"><span class="small muted">Drill-down (mã dimension, cách nhau dấu phẩy)</span>
+                  <input class="input" [ngModel]="(w.querySpec.drillPath ?? []).join(', ')" (change)="setDrillPath($any($event.target).value)" placeholder="faculty, program, cohort" />
+                  <span class="hint">Hợp lệ: {{ allowedDims().join(', ') }}</span>
+                </label>
+              }
+              <div class="row">
+                <label class="field"><span class="small muted">Rộng (cột)</span>
+                  <select class="input" [ngModel]="w.position.w" (ngModelChange)="setSize('w', $event)">
+                    @for (n of widthOptions; track n) {
+                      <option [ngValue]="n">{{ n }}/12</option>
+                    }
+                  </select>
+                </label>
+                <label class="field"><span class="small muted">Cao (hàng)</span>
+                  <select class="input" [ngModel]="w.position.h" (ngModelChange)="setSize('h', $event)">
+                    @for (n of [1, 2, 3, 4]; track n) {
+                      <option [ngValue]="n">{{ n }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+              <p class="small muted">Xem trước chạy dưới quyền của chính bạn.</p>
+            } @else {
+              <aiia-state message="Chọn một widget để sửa thuộc tính" />
+            }
+          </aside>
+        </div>
+      }
+
+      @if (shareOpen()) {
+        <aiia-modal title="Chia sẻ dashboard" (closed)="shareOpen.set(false)">
+          <div class="stack">
+            <p class="small muted" style="margin: 0">Người được chia sẻ thấy số liệu theo phạm vi quyền của họ, không theo quyền của bạn.</p>
+            <fieldset class="field">
+              <legend class="small muted">Theo vai trò</legend>
+              @for (r of roleOptions; track r[0]) {
+                <label class="row small"><input type="checkbox" [checked]="hasShare('ROLE', r[0])" (change)="toggleShare('ROLE', r[0], $any($event.target).checked)" /> {{ r[1] }}</label>
+              }
+            </fieldset>
+            <fieldset class="field">
+              <legend class="small muted">Theo đơn vị</legend>
+              @for (u of unitOptions; track u[0]) {
+                <label class="row small"><input type="checkbox" [checked]="hasShare('ORG_UNIT', u[0])" (change)="toggleShare('ORG_UNIT', u[0], $any($event.target).checked)" /> {{ u[1] }}</label>
+              }
+            </fieldset>
+          </div>
+          <div modal-foot class="modal-foot">
+            <button type="button" class="btn" (click)="shareOpen.set(false)">Hủy</button>
+            <button type="button" class="btn primary" (click)="saveShares()">Lưu chia sẻ</button>
+          </div>
+        </aiia-modal>
+      }
+    }
+  }
+</div>

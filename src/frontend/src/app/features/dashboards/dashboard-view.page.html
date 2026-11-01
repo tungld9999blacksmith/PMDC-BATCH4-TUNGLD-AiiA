@@ -1,0 +1,126 @@
+<div class="page">
+  @switch (board.state().status) {
+    @case ('loading') {
+      <div class="card"><aiia-state kind="loading" /></div>
+    }
+    @case ('error') {
+      <div class="card">
+        <aiia-state
+          kind="empty"
+          message="Không mở được dashboard"
+          [detail]="board.state().error?.status === 404 ? 'Dashboard không tồn tại hoặc chưa được chia sẻ cho bạn.' : board.message()"
+          actionLabel="Về thư viện"
+          (action)="router.navigate(['/dashboards'])"
+        />
+      </div>
+    }
+    @case ('ready') {
+      @if (board.state().data; as d) {
+        <aiia-page-header [title]="d.title ?? ''" [subtitle]="d.description" [crumbs]="[{ label: 'Dashboard', link: '/dashboards' }, { label: d.title ?? '' }]">
+          @if (!isExplore()) {
+            <button type="button" class="btn ghost sm star" (click)="toggleFavorite(d)" [attr.aria-pressed]="d.favorite" [attr.aria-label]="d.favorite ? 'Bỏ yêu thích' : 'Yêu thích'">{{ d.favorite ? '★' : '☆' }}</button>
+            @if (canExport()) {
+              <button type="button" class="btn sm no-print" (click)="exportOpen.set(true)">⤓ Export</button>
+              <button type="button" class="btn sm no-print" (click)="subscribeOpen.set(true)">✉ Đăng ký <span class="adv">ADV</span></button>
+            }
+            <button type="button" class="btn sm no-print" (click)="copyLink()">Chia sẻ liên kết</button>
+            @if (canLineage()) {
+              <a class="btn sm no-print" routerLink="/lineage" [queryParams]="{ nodeType: 'DASHBOARD', refId: d.id }">Lineage</a>
+            }
+            @if (canAsk()) {
+              <button type="button" class="btn sm primary no-print" (click)="askAbout(d)">✦ Hỏi về dashboard này</button>
+            }
+            @if (d.canEdit && session.hasAnyRole('BI_ANALYST')) {
+              <a class="btn sm no-print" [routerLink]="['/dashboards', d.id, 'edit']">Chỉnh sửa</a>
+            }
+          }
+        </aiia-page-header>
+
+        <div class="row meta">
+          @if (d.topic) {
+            <span class="chip info">{{ topicLabels[d.topic] }}</span>
+          }
+          @if (d.status !== 'PUBLISHED') {
+            <aiia-status [status]="d.status" />
+          }
+          <aiia-freshness [freshness]="d.freshness" />
+          @if (d.owner) {
+            <span class="small muted">Chủ sở hữu: {{ d.owner.fullName }}</span>
+          }
+        </div>
+
+        @if ((d.globalFilters ?? []).length) {
+          <section class="card filters no-print" aria-label="Bộ lọc toàn cục">
+            @for (dim of d.globalFilters ?? []; track dim) {
+              <label class="field">
+                <span class="small muted">{{ catalog.dimensionName(dim) }}</span>
+                <select class="input" [value]="selected()[dim] ?? ''" (change)="setFilter(dim, $any($event.target).value)">
+                  <option value="">Tất cả trong phạm vi</option>
+                  @for (v of options()[dim] ?? []; track v) {
+                    <option [value]="v" [selected]="selected()[dim] === v">{{ catalog.valueLabel(dim, v) }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <button type="button" class="btn ghost sm" (click)="resetFilters()">Đặt lại</button>
+          </section>
+        }
+
+        @if (widgets().length) {
+          <div class="board">
+            @for (w of widgets(); track w.id) {
+              <aiia-widget
+                [style.gridArea]="gridArea(w)"
+                [widget]="w"
+                [filters]="filters()"
+                [drill]="drill()[w.id ?? -1] ?? []"
+                (drillDown)="drillDown(w, $event)"
+                (drillTo)="drillTo(w, $event)"
+              />
+            }
+          </div>
+        } @else {
+          <div class="card"><aiia-state kind="empty" message="Dashboard chưa có widget" /></div>
+        }
+
+        <div class="print-watermark">Watermark: {{ watermark() }}</div>
+
+        @if (exportOpen()) {
+          <aiia-modal title="Xuất dashboard" (closed)="exportOpen.set(false)">
+            <div class="stack">
+              <p class="small muted" style="margin: 0">Tệp xuất chỉ gồm dữ liệu bạn được xem, có watermark người xuất và thời điểm; cột RESTRICTED luôn bị loại (BR13).</p>
+              <button type="button" class="btn primary" [disabled]="exporting()" (click)="exportPdf(d)">In / lưu PDF toàn bộ dashboard</button>
+              <h3>CSV theo widget</h3>
+              @for (w of widgets(); track w.id) {
+                @if (w.type !== 'KPI') {
+                  <button type="button" class="btn" [disabled]="exporting()" (click)="exportCsv(d, w)">⤓ {{ w.title }}</button>
+                }
+              }
+            </div>
+          </aiia-modal>
+        }
+
+        @if (subscribeOpen()) {
+          <aiia-modal title="Đăng ký nhận báo cáo định kỳ" (closed)="subscribeOpen.set(false)">
+            <div class="stack">
+              <label class="field">
+                <span class="small muted">Tần suất</span>
+                <select class="input" [value]="cron()" (change)="cron.set($any($event.target).value)">
+                  <option value="0 7 * * MON">Hằng tuần — 7:00 thứ Hai</option>
+                  <option value="0 7 * * *">Hằng ngày — 7:00</option>
+                  <option value="0 7 1 * *">Hằng tháng — 7:00 ngày 1</option>
+                </select>
+              </label>
+              <label class="row small"><input type="checkbox" [checked]="includeAi()" (change)="includeAi.set($any($event.target).checked)" /> Kèm tóm tắt tiếng Việt do AI tạo</label>
+              <p class="small muted" style="margin: 0">Báo cáo được tính theo quyền của người nhận tại thời điểm gửi và chỉ gửi tới email nội bộ (BR18).</p>
+            </div>
+            <div modal-foot class="modal-foot">
+              <button type="button" class="btn" (click)="subscribeOpen.set(false)">Hủy</button>
+              <button type="button" class="btn primary" (click)="subscribe(d)">Đăng ký</button>
+            </div>
+          </aiia-modal>
+        }
+      }
+    }
+  }
+</div>

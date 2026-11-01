@@ -10,6 +10,12 @@
 2. [Requirements – Use Case, User Stories INVEST, Acceptance Criteria](#2-requirements--use-case-user-stories-invest-acceptance-criteria)
 3. [Kiến trúc thông tin (Information Architecture)](#3-kiến-trúc-thông-tin-information-architecture)
 4. [Thiết kế UI/UX và tương tác Front-end](#4-thiết-kế-uiux-và-tương-tác-front-end)
+5. [Kiến trúc C4](#5-kiến-trúc-c4)
+6. [Cơ sở dữ liệu và hợp đồng OpenAPI](#6-cơ-sở-dữ-liệu-và-hợp-đồng-openapi)
+7. [Cấu trúc thư mục Frontend, Backend và Data Pipeline](#7-cấu-trúc-thư-mục-frontend-backend-và-data-pipeline)
+8. [Thiết kế chi tiết lớp và tuần tự](#8-thiết-kế-chi-tiết-lớp-và-tuần-tự)
+
+Xem thêm: [Tài liệu](#tài-liệu) · [Tiến độ dự án](#tiến-độ-dự-án)
 
 ---
 
@@ -44,68 +50,7 @@ Dữ liệu của một trường đại học thường nằm rải rác ở nh
 
 Phân rã từ **mục tiêu → năng lực (capability) → chức năng**. Mỗi nhánh lá về sau trở thành một nhóm User Story ở mục 2.
 
-```mermaid
-mindmap
-  root((AiiA Data Lakehouse hồ sơ 360°))
-    Tích hợp dữ liệu
-      Đăng ký nguồn được phép
-        Mục đích và căn cứ chia sẻ
-        Owner nghiệp vụ
-        Mức nhạy cảm nguồn
-      Ingest
-        Upload file CSV Excel
-        Kết nối CSDL qua JDBC
-        Kết nối API
-        Lập lịch batch
-      Giám sát pipeline
-        Lịch sử lần chạy
-        Log và số dòng
-        Chạy lại idempotent
-    Lưu trữ Lakehouse
-      Bronze dữ liệu thô bất biến
-      Silver dữ liệu chuẩn hóa
-      Gold mô hình phân tích
-      Open table format có versioning
-    Hồ sơ 360°
-      Đối soát danh tính
-        Khớp tự động
-        Hàng đợi duyệt thủ công
-        Gộp và tách bản ghi
-      Golden record
-        Ưu tiên nguồn
-        Nguồn gốc từng thuộc tính
-      Hồ sơ theo vai trò
-        Sinh viên
-        Giảng viên
-        Cán bộ
-      Dòng thời gian sự kiện
-    Quản trị dữ liệu
-      Chất lượng dữ liệu
-        Quy tắc 5 chiều
-        Cách ly bản ghi lỗi
-        Điểm DQ và issue
-      Danh mục dữ liệu
-        Data catalog
-        Business glossary
-        Phân loại nhạy cảm
-      Bảo mật và tuân thủ
-        RBAC
-        Phân quyền dòng và cột ADV
-        Yêu cầu và phê duyệt truy cập
-        Audit log
-      Lineage ADV
-    Phân tích và BI
-      Dashboard BI
-        Bộ lọc toàn cục
-        Drill down
-        Export có watermark
-      Semantic model ADV
-        Metric chuẩn hóa
-        Dimension dùng chung
-      Báo cáo tự động ADV
-      Phát hiện bất thường ADV
-      Trợ lý hỏi đáp ADV
-```
+![Phân rã bài toán top-down](./assets/mindmaps/problem-decomposition.svg)
 
 ### 1.4. Các bên liên quan (Stakeholders)
 
@@ -197,7 +142,7 @@ flowchart LR
     ANO -. giám sát .-> ING & GD
 ```
 
-**Công nghệ ứng viên (để đánh giá ở phần C4, chưa chốt):**
+**Công nghệ ứng viên** (lựa chọn cuối cùng xem [5.4. Quyết định kiến trúc](#54-quyết-định-kiến-trúc)):
 
 | Thành phần | Ứng viên mã nguồn mở | Ghi chú lựa chọn |
 | --- | --- | --- |
@@ -1102,96 +1047,7 @@ P27 Nhật ký kiểm toán → lọc → xem chi tiết → tab Hỏi-đáp →
 
 Sơ đồ liệt kê **các tương tác người dùng** (hành động + phản hồi giao diện) mà FE cần hiện thực ở từng khu vực.
 
-```mermaid
-mindmap
-  root((Tương tác FE AiiA))
-    Khung ứng dụng
-      Tìm kiếm toàn cục
-        Gợi ý tức thì theo nhóm
-        Phím tắt Ctrl K
-      Nút Hỏi AiiA mở trợ lý
-      Chuông thông báo
-        Run lỗi
-        Yêu cầu được duyệt
-        Cảnh báo mới
-      Menu người dùng
-        Quyền của tôi
-        Đăng xuất
-      Sidebar thu gọn và mở rộng
-      Breadcrumb quay lại
-    Hồ sơ 360°
-      Tìm kiếm có debounce
-      Lọc nhiều tiêu chí
-      Chuyển vai trò SV GV CB
-      Chuyển tab khía cạnh
-      Hover biểu tượng nguồn
-      Mở drawer nguồn gốc
-      Lọc và tải thêm timeline
-      Nhấn trường bị khóa để yêu cầu quyền
-      Bỏ che tạm thời khi có quyền
-    Dashboard
-      Chọn bộ lọc toàn cục
-      Đồng bộ bộ lọc vào URL
-      Tooltip trên biểu đồ
-      Nhấn để drill down
-      Breadcrumb drill
-      Sắp xếp và phân trang bảng
-      Export PDF CSV
-      Đăng ký định kỳ
-      Chia sẻ liên kết
-      Đánh dấu yêu thích
-    Thiết kế dashboard
-      Kéo dataset vào widget
-      Kéo thả và đổi kích thước widget
-      Panel thuộc tính
-      Hoàn tác và làm lại
-      Xem trước
-      Publish và chia sẻ
-      Cảnh báo rời trang chưa lưu
-    Trợ lý hỏi đáp
-      Nhập câu hỏi
-      Chọn câu hỏi gợi ý
-      Trạng thái đang phân tích
-      Chip làm rõ
-      Xem truy vấn
-      Mở trong dashboard
-      Phản hồi hữu ích
-      Yêu cầu quyền khi bị từ chối
-    Tích hợp dữ liệu
-      Wizard 4 bước
-      Kiểm tra kết nối
-      Kéo thả upload
-      Xem trước 20 dòng
-      Ánh xạ cột kéo nối
-      Bộ chọn lịch trực quan
-      Chạy ngay và tạm dừng
-      Log trực tiếp
-      Chạy lại run
-    Chất lượng và danh tính
-      Chạy thử quy tắc
-      Bản đồ nhiệt nhấn để xem
-      Thao tác hàng loạt issue
-      Xử lý lại quarantine
-      So sánh song song
-      Gộp Không trùng Để sau
-      Phím tắt duyệt nhanh
-      Tách hồ sơ
-    Quản trị và phân quyền
-      Gửi yêu cầu truy cập
-      Duyệt và từ chối kèm lý do
-      Sửa nhãn nhạy cảm trong bảng
-      Gán vai trò và phạm vi
-      Mô phỏng xem như
-      So sánh phiên bản chính sách
-      Lọc audit log
-    Lineage và cảnh báo
-      Phóng to và kéo đồ thị
-      Mở rộng upstream downstream
-      Chế độ mức cột
-      Phân tích tác động
-      Biểu đồ dải kỳ vọng
-      Xác nhận và đóng cảnh báo
-```
+![Mindmap tương tác Front-end](./assets/mindmaps/fe-interactions.svg)
 
 ### 4.4. Danh mục mẫu tương tác (Interaction Patterns)
 
@@ -1398,4 +1254,1000 @@ flowchart TD
 
 ---
 
-> **Các phần tiếp theo (chưa thực hiện):** DBML/ER (Mermaid), OpenAPI Document, C4 Documentation, Code structure, Code.
+## 5. Kiến trúc C4
+
+Mục này trình bày C1–C3. C4 Level 4 (mức code), sơ đồ lớp và sơ đồ tuần tự nằm ở [mục 8](#8-thiết-kế-chi-tiết-lớp-và-tuần-tự).
+
+### 5.1. C1 — System Context
+
+```mermaid
+flowchart LR
+    viewer(["Report Viewer<br/>Lãnh đạo, phòng, khoa"])
+    analyst(["BI Analyst"])
+    steward(["Data Steward"])
+    engineer(["Data Engineer"])
+    admin(["Platform Admin"])
+
+    subgraph boundary[" "]
+        aiia["AiiA<br/><i>[Software System]</i><br/>Data Lakehouse hồ sơ 360°: tích hợp, chuẩn hóa,<br/>quản trị dữ liệu, BI và trợ lý hỏi-đáp có kiểm soát"]
+    end
+
+    idp["Hệ thống định danh trường<br/><i>[External System]</i><br/>AD/LDAP · SSO"]
+    src["Hệ thống nguồn được phép<br/><i>[External System]</i><br/>SIS · LMS · HRM · Tài chính · Thư viện · KHCN"]
+    llm["LLM Provider<br/><i>[External System]</i><br/>Lập kế hoạch truy vấn, diễn giải, tóm tắt"]
+    mail["Mail server trường<br/><i>[External System]</i><br/>Gửi báo cáo, thông báo"]
+
+    viewer -- "xem dashboard, tra cứu hồ sơ, hỏi-đáp" --> aiia
+    analyst -- "thiết kế dashboard, định nghĩa metric" --> aiia
+    steward -- "quy tắc DQ, đối soát, phân loại, duyệt quyền" --> aiia
+    engineer -- "đăng ký nguồn, ingest, giám sát pipeline" --> aiia
+    admin -- "người dùng, chính sách, kiểm toán" --> aiia
+    aiia -- "OIDC / federation" --> idp
+    aiia -- "JDBC, API, file (theo lịch)" --> src
+    aiia -- "schema metric + kết quả tổng hợp đã áp quyền" --> llm
+    aiia -- "SMTP" --> mail
+
+    style aiia fill:#1864AB,color:#fff
+    style idp fill:#868E96,color:#fff
+    style src fill:#868E96,color:#fff
+    style llm fill:#868E96,color:#fff
+    style mail fill:#868E96,color:#fff
+```
+
+### 5.2. C2 — Container
+
+```mermaid
+flowchart TB
+    users(["Người dùng nội bộ<br/>5 vai trò"])
+
+    subgraph platform["AiiA [Software System Boundary]"]
+        direction TB
+        subgraph presentation["Presentation"]
+            web["Web App<br/><i>[Container: Angular + TypeScript]</i><br/>Hồ sơ 360°, dashboard, builder, trợ lý,<br/>tích hợp, quản trị dữ liệu, admin"]
+        end
+        subgraph application["Application"]
+            api["Platform API<br/><i>[Container: FastAPI, Python 3.12]</i><br/>REST + SSE, RBAC, Semantic Service,<br/>Query Gateway, Assistant, Audit"]
+            worker["App Worker<br/><i>[Container: Celery]</i><br/>Export, báo cáo định kỳ, thông báo,<br/>thu hồi quyền hết hạn"]
+            orch["Data Orchestrator<br/><i>[Container: Dagster + dbt]</i><br/>Ingest, DQ, đối soát danh tính,<br/>Silver → Gold, bất thường, đồng bộ metadata"]
+        end
+        subgraph security["Security"]
+            kc["Keycloak<br/><i>[Container: IdP]</i><br/>OIDC, MFA, federation với AD trường"]
+            opa["OPA<br/><i>[Container: Policy Engine]</i><br/>Row filter, column mask cho Trino"]
+        end
+        subgraph data["Data"]
+            trino["Trino<br/><i>[Container: Query Engine]</i><br/>SQL trên Iceberg, impersonation"]
+            lake[("MinIO + Iceberg REST Catalog<br/><i>[Container: Lakehouse]</i><br/>Bronze · Silver · Gold · Quarantine")]
+            pg[("PostgreSQL 16<br/><i>[Container: Control-plane DB]</i><br/>Metadata, quyền, dashboard, audit")]
+            redis[("Redis<br/><i>[Container: Cache/Queue]</i>")]
+        end
+    end
+
+    idp["AD/LDAP trường<br/><i>[External]</i>"]
+    src["Hệ thống nguồn<br/><i>[External]</i>"]
+    llm["LLM Provider<br/><i>[External]</i>"]
+    mail["Mail server<br/><i>[External]</i>"]
+
+    users -- "HTTPS" --> web
+    web -- "OIDC login" --> kc
+    web -- "REST / SSE, Bearer JWT" --> api
+    api -- "xác thực token (JWKS)" --> kc
+    api -- "SQL metadata" --> pg
+    api -- "SQL dữ liệu, X-Trino-User = người gọi" --> trino
+    api -- "publish bundle chính sách" --> opa
+    api -- "enqueue job" --> redis
+    api -- "trigger run, đọc trạng thái (GraphQL)" --> orch
+    api -- "HTTPS" --> llm
+    trino -- "hỏi quyết định" --> opa
+    trino --> lake
+    worker --> redis
+    worker --> pg
+    worker -- "chạy truy vấn dưới danh tính người nhận" --> trino
+    worker -- "SMTP" --> mail
+    orch -- "JDBC / API / file" --> src
+    orch -- "PyIceberg, dbt-trino" --> trino
+    orch --> lake
+    orch -- "run, DQ, catalog, lineage" --> pg
+    kc -- "federation" --> idp
+
+    style web fill:#1168bd,color:#fff
+    style api fill:#0b4f9e,color:#fff
+    style worker fill:#1168bd,color:#fff
+    style orch fill:#1168bd,color:#fff
+    style kc fill:#1168bd,color:#fff
+    style opa fill:#1168bd,color:#fff
+    style trino fill:#1168bd,color:#fff
+    style lake fill:#1168bd,color:#fff
+    style pg fill:#1168bd,color:#fff
+    style redis fill:#1168bd,color:#fff
+```
+
+### 5.3. C3 — Component
+
+#### 5.3.1. Platform API
+
+```mermaid
+flowchart TB
+    subgraph rt["Platform API [Container: FastAPI]"]
+        direction TB
+        http["HTTP Routers<br/><i>[Component]</i><br/>14 nhóm router /api/v1,<br/>validation, RFC 7807, SSE"]
+        authn["Identity & Access<br/><i>[Component]</i><br/>Xác thực JWT, RBAC,<br/>ScopeResolver đơn vị + grant"]
+        audit["Audit Logger<br/><i>[Component]</i><br/>Ghi audit bất biến (BR10)"]
+        profile["Profile Service<br/><i>[Component]</i><br/>Hồ sơ 360°, facet, timeline,<br/>nguồn gốc thuộc tính"]
+        ingest["Source & Run Service<br/><i>[Component]</i><br/>Nguồn, upload, lịch, mapping,<br/>trigger Dagster"]
+        gov["Governance Services<br/><i>[Component]</i><br/>Catalog, DQ, đối soát danh tính,<br/>lineage, cảnh báo"]
+        access["Access Service<br/><i>[Component]</i><br/>Yêu cầu, duyệt, cấp, thu hồi quyền"]
+        policy["Policy Publisher<br/><i>[Component]</i><br/>Biên dịch chính sách + grant<br/>→ bundle OPA"]
+        bi["Dashboard Service<br/><i>[Component]</i><br/>Dashboard, chia sẻ, export, đăng ký"]
+        sem["Semantic Service<br/><i>[Component]</i><br/>Metric, dimension,<br/>SemanticQuery → SQL"]
+        qgw["Query Gateway<br/><i>[Component]</i><br/>Trino impersonation, ẩn nhóm < 5,<br/>giới hạn dòng, đo thời gian"]
+        asst["Assistant<br/><i>[Component]</i><br/>Guardrail, Planner, Answer Writer"]
+        llmA["LLM Adapter<br/><i>[Component]</i><br/>Giao diện độc lập nhà cung cấp"]
+        repo["Repositories<br/><i>[Component: SQLAlchemy]</i>"]
+    end
+
+    web["Web App"]
+    pg[("PostgreSQL")]
+    trino["Trino"]
+    opa["OPA"]
+    dagster["Dagster"]
+    llm["LLM Provider"]
+
+    web --> http
+    http --> authn
+    http --> profile & ingest & gov & access & bi & sem & asst
+    profile --> qgw
+    bi --> sem
+    asst --> sem
+    asst --> llmA
+    sem --> qgw
+    access --> policy
+    gov -.->|"đổi nhãn nhạy cảm"| policy
+    ingest --> dagster
+    qgw --> trino
+    policy --> opa
+    llmA --> llm
+    authn & profile & ingest & gov & access & bi & sem & asst --> repo
+    qgw & profile & access & asst & bi -.-> audit
+    audit --> repo
+    repo --> pg
+
+    style asst fill:#0b4f9e,color:#fff
+    style qgw fill:#0b4f9e,color:#fff
+    style http fill:#1168bd,color:#fff
+    style authn fill:#1168bd,color:#fff
+    style audit fill:#1168bd,color:#fff
+    style profile fill:#1168bd,color:#fff
+    style ingest fill:#1168bd,color:#fff
+    style gov fill:#1168bd,color:#fff
+    style access fill:#1168bd,color:#fff
+    style policy fill:#1168bd,color:#fff
+    style bi fill:#1168bd,color:#fff
+    style sem fill:#1168bd,color:#fff
+    style llmA fill:#1168bd,color:#fff
+    style repo fill:#1168bd,color:#fff
+```
+
+#### 5.3.2. Data Orchestrator
+
+```mermaid
+flowchart LR
+    subgraph orch["Data Orchestrator [Container: Dagster + dbt]"]
+        direction LR
+        conn["Source Connectors<br/><i>[Component]</i><br/>File, JDBC, API"]
+        bronze["Bronze Writer<br/><i>[Component: PyIceberg]</i><br/>Append + batch_id, checksum"]
+        std["Standardizer<br/><i>[Component]</i><br/>Áp mapping phiên bản đang dùng"]
+        dq["DQ Runner<br/><i>[Component]</i><br/>Biên dịch quy tắc → SQL Trino,<br/>tách quarantine"]
+        silver["Silver Merger<br/><i>[Component: dbt]</i><br/>MERGE idempotent"]
+        idr["Identity Resolver<br/><i>[Component: Splink]</i><br/>Blocking, chấm điểm, ngưỡng BR05"]
+        gold["Gold Models<br/><i>[Component: dbt]</i><br/>dim / fact / mart, test dbt"]
+        ano["Anomaly Detector<br/><i>[Component]</i><br/>Volume, freshness, metric drift"]
+        meta["Metadata Sync<br/><i>[Component]</i><br/>Catalog, row count, độ mới,<br/>lineage từ dbt manifest"]
+    end
+
+    src["Hệ thống nguồn"]
+    trino["Trino"]
+    pg[("PostgreSQL")]
+    lake[("Lakehouse")]
+
+    src --> conn --> bronze --> std --> dq
+    dq -->|"đạt"| silver
+    dq -->|"vi phạm BLOCKING"| lake
+    silver --> idr --> gold
+    gold --> ano
+    bronze & silver & gold --> lake
+    dq & gold & silver --> trino
+    dq -->|"dq_rule_results, dq_issues"| pg
+    idr -->|"match_candidates"| pg
+    ano -->|"anomaly_alerts"| pg
+    meta --> pg
+    gold -.-> meta
+
+    style dq fill:#0b4f9e,color:#fff
+    style idr fill:#0b4f9e,color:#fff
+    style conn fill:#1168bd,color:#fff
+    style bronze fill:#1168bd,color:#fff
+    style std fill:#1168bd,color:#fff
+    style silver fill:#1168bd,color:#fff
+    style gold fill:#1168bd,color:#fff
+    style ano fill:#1168bd,color:#fff
+    style meta fill:#1168bd,color:#fff
+```
+
+### 5.4. Quyết định kiến trúc
+
+| # | Quyết định | Lý do | Đánh đổi |
+| --- | --- | --- | --- |
+| AD01 | Lakehouse **MinIO + Apache Iceberg**, truy vấn bằng **Trino** | Định dạng mở, ACID, time-travel (xem lại batch), một engine phục vụ cả BI, hồ sơ và DQ | Cần vận hành thêm Trino và catalog so với dùng một CSDL đơn |
+| AD02 | Tách **control plane PostgreSQL** khỏi Lakehouse | Metadata giao dịch nhiều (quyền, issue, dashboard) cần ràng buộc chặt; dữ liệu cá nhân chỉ nằm ở Lakehouse | Hai nơi lưu trữ; đồng bộ metadata qua Metadata Sync |
+| AD03 | **Thực thi phân quyền tại Trino bằng OPA** (row filter, column mask) và truy vấn bằng danh tính người dùng | Một điểm thực thi cho mọi đường truy cập: dashboard, hồ sơ, export, báo cáo, trợ lý (BR08, BR11) | Phải biên dịch chính sách sang bundle OPA và kiểm thử kỹ |
+| AD04 | **Semantic Service tự xây**, LLM chỉ sinh `SemanticQuery` có cấu trúc | Chặn text-to-SQL tùy ý; mọi câu trả lời dùng metric đã chứng nhận và kiểm chứng được (BR16) | Câu hỏi ngoài semantic model sẽ bị từ chối thay vì “cố trả lời” |
+| AD05 | **Dagster** điều phối, **dbt** cho Silver → Gold | Asset graph và dbt manifest cho lineage gần như miễn phí (US31) | Hai công cụ cần học |
+| AD06 | Quy tắc DQ lưu ở PostgreSQL, **biên dịch thành SQL** chạy trên Trino | Steward soạn quy tắc trên UI, không cần viết code; kết quả gắn `run_id` | Tự xây bộ biên dịch thay vì dùng Great Expectations |
+| AD07 | Đối soát danh tính bằng **Splink** (xác suất) + khớp định danh mạnh | Có điểm và trọng số từng trường để giải thích quyết định cho Steward | Phải hiệu chỉnh mô hình trên dữ liệu mẫu có nhãn |
+| AD08 | **Keycloak** làm IdP, federation với AD/LDAP trường | OIDC chuẩn, MFA, nhóm/thuộc tính đơn vị dùng cho row filter | Thêm một thành phần cần vận hành |
+| AD09 | LLM phía sau **adapter**; mặc định Claude | Đổi nhà cung cấp không ảnh hưởng nghiệp vụ (NFR27) | Chi phí gọi API; cần benchmark khi đổi mô hình |
+| AD10 | Không có lời gọi tới hệ thống nguồn trong luồng request của người dùng | Ổn định, không tạo tải lên hệ thống vận hành của trường | Dữ liệu trễ theo lịch ingest (có nhãn độ mới) |
+
+## 6. Cơ sở dữ liệu và hợp đồng OpenAPI
+
+Bước này định nghĩa hợp đồng lưu trữ và hợp đồng HTTP nối Web App với Platform API.
+
+### 6.1. Sơ đồ cơ sở dữ liệu
+
+Control plane PostgreSQL gồm **39 bảng** chia 9 nhóm. Lớp Gold mô hình hồ sơ 360° dạng star schema quanh `dim_person` (golden record), mỗi hồ sơ vai trò và bảng fact là một khía cạnh của hồ sơ.
+
+```mermaid
+erDiagram
+    users ||--o{ user_roles : "được gán"
+    data_sources ||--o{ pipeline_runs : "chạy"
+    pipeline_runs ||--o{ dq_rule_results : "kiểm tra"
+    datasets ||--o{ dataset_columns : "gồm"
+    datasets ||--o{ dq_rules : "quy tắc"
+    dq_rules ||--o{ dq_issues : "phát sinh"
+    users ||--o{ access_requests : "yêu cầu"
+    access_requests ||--o| access_grants : "tạo"
+    datasets ||--o{ access_policies : "chính sách"
+    datasets ||--o{ semantic_metrics : "nền"
+    dashboards ||--o{ dashboard_widgets : "gồm"
+    match_candidates ||--o{ person_merge_events : "quyết định"
+    users ||--o{ qa_conversations : "mở"
+    qa_conversations ||--o{ qa_messages : "gồm"
+    users ||--o{ audit_logs : "thực hiện"
+
+    data_sources {
+        bigint id PK
+        varchar code UK
+        source_type type
+        source_status status
+        text purpose "BR01"
+        varchar legal_basis_ref "BR01"
+        sensitivity_level sensitivity
+    }
+    pipeline_runs {
+        uuid id PK
+        bigint source_id FK
+        run_status status
+        int rows_quarantined
+    }
+    dataset_columns {
+        bigint id PK
+        bigint dataset_id FK
+        varchar name
+        sensitivity_level sensitivity "BR07"
+    }
+    dq_rules {
+        bigint id PK
+        bigint dataset_id FK
+        dq_rule_type rule_type
+        dq_severity severity
+        jsonb params
+    }
+    access_grants {
+        bigint id PK
+        uuid user_id FK
+        resource_type resource_type
+        varchar resource_id
+        timestamptz valid_to "tối đa 180 ngày"
+    }
+    match_candidates {
+        bigint id PK
+        numeric score "BR05"
+        match_status status
+    }
+    semantic_metrics {
+        bigint id PK
+        varchar code UK
+        text expression
+        metric_status status
+    }
+    qa_messages {
+        bigint id PK
+        qa_status status
+        jsonb semantic_query
+        text_array metric_codes
+        timestamptz data_as_of
+    }
+    audit_logs {
+        bigint id PK
+        timestamptz occurred_at PK
+        varchar action
+        audit_outcome outcome
+    }
+```
+
+Schema hiện thực các quy tắc nghiệp vụ ngay ở tầng dữ liệu:
+
+- Nguồn phải có mục đích và căn cứ cho phép (BR01).
+- Yêu cầu truy cập tối đa 180 ngày và không cho tự duyệt (BR09).
+- Chỉ tự gộp hồ sơ khi điểm ≥ 0,95 (BR05).
+- Câu trả lời của trợ lý bắt buộc có metric và thời điểm dữ liệu (BR16).
+- Audit log bất biến, phân vùng theo tháng (BR10).
+- Không gỡ được Platform Admin cuối cùng (AC24).
+
+Schema đã được chạy thử trọn vẹn trên PostgreSQL (PGlite), kèm kiểm thử các ràng buộc trên.
+
+Chi tiết: [Thiết kế CSDL và từ điển dữ liệu](docs/DATABASE.md) · [DBML](src/database/aiia.dbml) · [PostgreSQL schema](src/database/aiia.sql).
+
+### 6.2. Tài liệu API OpenAPI 3.0
+
+Hợp đồng HTTP viết theo OpenAPI 3.0.4, chia 15 nhóm: Me, Profiles, Sources, Runs, Catalog, Data Quality, Identity, Access, Dashboards, Semantic, Reports, Alerts, Lineage, Assistant, Admin.
+
+```text
+80 path · 98 operation · 98 schema tái sử dụng
+Bearer JWT (OIDC Keycloak) cho mọi endpoint
+x-roles (vai trò được gọi) và x-scope (MVP | ADV) trên mọi operation
+Server-Sent Events cho log pipeline và trợ lý hỏi-đáp
+MaskableValue cho mọi trường có thể bị che; Problem.requestable để FE mở form yêu cầu quyền
+404 thống nhất cho "không tồn tại" và "ngoài phạm vi" (AC11)
+Lỗi RFC 7807 application/problem+json
+```
+
+| Nhóm | Endpoint chính | Trang |
+| --- | --- | --- |
+| Profiles | `GET /profiles`, `GET /profiles/{id}`, `GET /profiles/{id}/facets/{facet}`, `GET /profiles/{id}/timeline` | P05, P06 |
+| Sources / Runs | `POST /sources`, `POST /sources/{id}/uploads`, `POST /sources/{id}/runs`, `GET /runs/{id}/logs` (SSE) | P13–P15 |
+| Data Quality | `POST /dq/rules`, `POST /dq/rules/{id}/dry-run`, `GET /dq/scores`, `PATCH /dq/issues/{id}` | P19, P20 |
+| Identity | `GET /identity/candidates`, `POST /identity/candidates/{id}/decision` | P21 |
+| Access | `POST /access-requests`, `POST /access-requests/{id}/decision` | P24 |
+| Dashboards / Semantic | `GET /dashboards/{id}`, `POST /semantic/query`, `POST /dashboards/{id}/exports` | P07–P10 |
+| Assistant | `POST /assistant/conversations/{id}/messages` (SSE) | P12 |
+| Admin | `PUT /admin/users/{id}/roles`, `POST /admin/policies/simulate`, `GET /admin/audit-logs` | P25–P27 |
+
+Mọi operation có `operationId` ổn định, tham số, schema request/response và mã lỗi; hợp đồng đã qua `redocly lint` (chỉ còn cảnh báo vì server trỏ `localhost`). Đây là nguồn sự thật thiết kế; backend chưa được hiện thực.
+
+- [Đặc tả OpenAPI 3.0.4](docs/api/openapi.yaml)
+
+## 7. Cấu trúc thư mục Frontend, Backend và Data Pipeline
+
+### 7.1. Bố cục repository
+
+```text
+PMDC-BATCH4-TUNGLD-AiiA/
+├── assets/                          # [có] Ảnh mind map, sitemap; assets/mindmaps/*.txt → *.svg
+├── docs/                            # [có]
+│   ├── api/openapi.yaml             #   Hợp đồng API
+│   ├── requirements/                #   Yêu cầu phi chức năng
+│   └── DATABASE.md                  #   ER, từ điển dữ liệu, vòng đời dữ liệu
+├── scripts/                         # [có] mindmap_to_svg.py
+├── dockerfiles/                     # [có] Dockerfile.backend, .mock-source, .pipelines, .web (build từ gốc repo)
+├── infra/                           # [có] Postgres init, Trino, Prometheus, Loki, Promtail, Tempo, Grafana, Debezium
+├── sample-data/
+│   └── mock-source/                 # [có] Nguồn giả lập: API + CSDL Postgres (uv)
+├── src/
+│   ├── database/                    # [có] aiia.dbml, aiia.sql (control plane)
+│   ├── frontend/                    # [có] Angular 19 standalone (skeleton, đã build production)
+│   ├── backend/                     # [có] FastAPI Platform API + Celery worker (uv)
+│   └── pipelines/                   # [có] Dagster, dlt, PyIceberg, Soda, dbt-trino (uv)
+├── compose.yaml                     # [có] Một compose, chia nhóm bằng profiles
+├── docs/RUNNING.md                  # [có] Hướng dẫn chạy và kiểm tra
+└── README.md
+```
+
+`[có]` = đã có trong repo · `[đích]` = cấu trúc đích, chưa hiện thực.
+
+### 7.2. Angular Web App
+
+```text
+src/frontend/src/app/
+├── app.config.ts            # Providers, router, HttpClient, OIDC
+├── app.routes.ts            # Route lazy-load; canMatch theo vai trò (roleGuard)
+├── core/
+│   ├── auth/                # OIDC client, phiên, roleGuard, hasRole
+│   ├── api/                 # Client sinh từ openapi.yaml
+│   ├── interceptors/        # Bearer token, RFC 7807 → thông báo, traceId
+│   └── sse/                 # Đọc luồng SSE (log run, trợ lý)
+├── shared/
+│   ├── layout/              # App shell: topbar, sidebar theo vai trò, breadcrumb, drawer phải
+│   ├── components/          # masked-value, freshness-chip, sensitivity-badge, dq-badge,
+│   │                        # request-access-dialog, provenance-drawer, confirm-dialog,
+│   │                        # filter-bar, data-table, chart (ECharts), state-views
+│   └── pipes/               # Định dạng số/ngày tiếng Việt, "< 5"
+├── features/
+│   ├── home/                # P02
+│   ├── me/                  # P03
+│   ├── profiles/            # P05 search, P06 detail + tabs/*, timeline
+│   ├── dashboards/          # P07 library, P08 viewer, P09 builder
+│   ├── semantic/            # P10 [ADV]
+│   ├── reports/             # P11 [ADV]
+│   ├── assistant/           # P12 [ADV]
+│   ├── sources/             # P13 list, P14 wizard + upload
+│   ├── runs/                # P15
+│   ├── explorer/            # P16
+│   ├── catalog/             # P17, P18, glossary
+│   ├── data-quality/        # P19 rules, P20 scores & issues
+│   ├── identity/            # P21
+│   ├── lineage/             # P22 [ADV] (Cytoscape.js)
+│   ├── alerts/              # P23 [ADV]
+│   ├── access/              # P24
+│   ├── admin/               # P25 users, P26 policies [ADV], P27 audit
+│   └── errors/              # P04 403
+└── styles/                  # Design token: màu trạng thái, mức nhạy cảm, lớp dữ liệu
+```
+
+Luồng phụ thuộc: `Page → Feature store (signals) → core/api client → REST / SSE`. Feature không import lẫn nhau; dùng chung qua `shared/`.
+
+### 7.3. FastAPI Platform API và App Worker
+
+```text
+src/backend/
+├── app/
+│   ├── api/v1/              # Router: me, profiles, sources, runs, catalog, dq, identity, access,
+│   │                        # dashboards, semantic, reports, alerts, lineage, assistant, admin
+│   ├── core/                # config, db, security (JWT/JWKS, RBAC), errors (RFC 7807),
+│   │                        # audit, rate_limit, telemetry (OpenTelemetry)
+│   ├── schemas/             # Pydantic khớp openapi.yaml
+│   ├── domain/              # ORM model, enum, state machine (run, issue, request, alert)
+│   ├── repositories/        # Truy cập PostgreSQL
+│   ├── services/            # profile, source, run, catalog, dq, identity, access,
+│   │                        # dashboard, report, alert, lineage
+│   ├── semantic/            # registry, compiler (SemanticQuery → SQL), validator
+│   ├── query/               # trino_gateway (impersonation), suppression (k = 5), limits
+│   ├── policy/              # scope_resolver, opa_bundle_publisher, simulate
+│   ├── assistant/           # guardrails, planner, answer_writer, llm_adapter, prompts/
+│   └── integrations/        # dagster_client, object_storage, mail
+├── worker/
+│   ├── celery_app.py
+│   └── tasks/               # exports, report_delivery, notifications, access_expiry, audit_partitions
+├── eval/assistant/          # Benchmark hỏi-đáp (NFR19) chạy trong CI
+└── tests/                   # unit, contract (schemathesis với openapi.yaml), authz (ma trận quyền)
+```
+
+### 7.4. Data Pipeline (Dagster + dbt)
+
+```text
+src/pipelines/
+├── aiia_dagster/
+│   ├── definitions.py       # Đăng ký asset, job, schedule, sensor
+│   ├── resources/           # trino, iceberg (PyIceberg), control_plane (PostgreSQL), minio
+│   ├── connectors/          # file, jdbc, api — đọc cấu hình từ data_sources
+│   ├── assets/
+│   │   ├── bronze.py        # Ghi append + batch_id
+│   │   ├── standardize.py   # Áp schema_mappings đang dùng
+│   │   └── dbt_assets.py    # Silver/Gold từ dbt
+│   ├── dq/                  # rule_compiler, runner, quarantine
+│   ├── identity/            # Splink: blocking rules, model, resolver → match_candidates
+│   ├── anomaly/             # volume, freshness, metric_drift → anomaly_alerts
+│   ├── metadata/            # catalog_sync, lineage_sync (dbt manifest)
+│   ├── schedules.py
+│   └── sensors.py           # Upload mới, yêu cầu chạy từ API
+└── dbt/
+    ├── models/
+    │   ├── silver/          # stg_<source>__<entity>, MERGE theo khóa nghiệp vụ
+    │   ├── gold/            # dim_person, dim_student, fact_* (khớp schema gold trong aiia.dbml)
+    │   └── marts/           # mart_student_term_kpi, ...
+    ├── seeds/               # dim_term, dim_org_unit mẫu
+    └── tests/               # Kiểm thử dbt bổ sung cho DQ
+```
+
+Quy tắc phụ thuộc:
+
+```text
+api → services → repositories → PostgreSQL
+api → semantic → query.trino_gateway → Trino (danh tính người gọi)
+api → assistant → semantic (không gọi Trino trực tiếp, không sinh SQL tự do)
+assistant → llm_adapter (chỉ giao diện)
+domain không phụ thuộc api hay repositories
+worker → services/query, không gọi api qua HTTP
+pipelines → control-plane chỉ qua resources.control_plane; không import backend
+```
+
+## 8. Thiết kế chi tiết lớp và tuần tự
+
+Thiết kế chi tiết dẫn xuất từ thành phần C4 ở mục 5, hợp đồng dữ liệu và API ở mục 6, và cấu trúc thư mục ở mục 7.
+
+### 8.1. C4 Level 4 — Cộng tác ở mức code
+
+#### L4.1. Assistant (trợ lý hỏi-đáp)
+
+```mermaid
+flowchart TB
+    subgraph assistant["Assistant [Component]"]
+        direction TB
+        route["ask_assistant()<br/><i>[FastAPI route]</i><br/>Nhận AskRequest, mở SSE"]
+        guard["Guardrails<br/><i>[Python class]</i><br/>Chủ đề chặn, prompt injection,<br/>độ dài, rate limit"]
+        planner["QueryPlanner<br/><i>[Python class]</i><br/>LLM chọn metric/dimension/filter<br/>→ SemanticQuery hoặc Clarify"]
+        catalog["MetricCatalog<br/><i>[Python class]</i><br/>Chỉ metric CERTIFIED<br/>người hỏi có quyền"]
+        compiler["SemanticCompiler<br/><i>[Python class]</i><br/>SemanticQuery → SQL"]
+        gateway["TrinoGateway<br/><i>[Python class]</i><br/>Chạy với danh tính người hỏi,<br/>ẩn nhóm < 5"]
+        writer["AnswerWriter<br/><i>[Python class]</i><br/>Diễn giải kết quả tổng hợp,<br/>gắn metric, bộ lọc, thời điểm"]
+        adapter["LLMAdapter<br/><i>[Python protocol]</i>"]
+        log["AssistantLogRepository<br/><i>[Python class]</i>"]
+
+        route --> guard --> planner
+        planner --> catalog
+        planner --> adapter
+        planner --> compiler --> gateway
+        gateway --> writer --> adapter
+        route --> log
+    end
+
+    trino["Trino + OPA"]
+    llm["LLM Provider"]
+    pg[("PostgreSQL")]
+    gateway --> trino
+    adapter --> llm
+    log --> pg
+    catalog --> pg
+
+    style planner fill:#0b4f9e,color:#fff
+    style route fill:#1168bd,color:#fff
+    style guard fill:#1168bd,color:#fff
+    style catalog fill:#1168bd,color:#fff
+    style compiler fill:#1168bd,color:#fff
+    style gateway fill:#1168bd,color:#fff
+    style writer fill:#1168bd,color:#fff
+    style adapter fill:#1168bd,color:#fff
+    style log fill:#1168bd,color:#fff
+```
+
+#### L4.2. Thực thi phân quyền dữ liệu (Access & Policy)
+
+```mermaid
+flowchart TB
+    subgraph acc["Access & Policy [Component]"]
+        direction TB
+        decide["decide_access_request()<br/><i>[FastAPI route]</i>"]
+        svc["AccessService<br/><i>[Python class]</i><br/>Duyệt, cấp, thu hồi, hết hạn"]
+        rules["AccessPolicy<br/><i>[Python class]</i><br/>Không tự duyệt, ≤ 180 ngày,<br/>đúng Steward phụ trách"]
+        scope["ScopeResolver<br/><i>[Python class]</i><br/>Vai trò + đơn vị + grant còn hạn"]
+        pub["OpaBundlePublisher<br/><i>[Python class]</i><br/>Sinh data.json: row filter,<br/>column mask theo người dùng"]
+        repo["GrantRepository<br/><i>[Python class]</i>"]
+
+        decide --> svc --> rules
+        svc --> repo
+        svc --> pub
+        pub --> scope --> repo
+    end
+
+    opa["OPA"]
+    trino["Trino"]
+    pg[("PostgreSQL")]
+    pub --> opa
+    trino -->|"row filter / column mask"| opa
+    repo --> pg
+
+    style svc fill:#0b4f9e,color:#fff
+    style decide fill:#1168bd,color:#fff
+    style rules fill:#1168bd,color:#fff
+    style scope fill:#1168bd,color:#fff
+    style pub fill:#1168bd,color:#fff
+    style repo fill:#1168bd,color:#fff
+```
+
+### 8.2. Sơ đồ lớp cốt lõi
+
+#### 1. Semantic model và trợ lý
+
+```mermaid
+classDiagram
+    direction LR
+
+    class SemanticQuery {
+        +list~str~ metrics
+        +list~str~ dimensions
+        +list~Filter~ filters
+        +list~OrderBy~ order_by
+        +int limit
+    }
+    class Metric {
+        +str code
+        +str expression
+        +int base_dataset_id
+        +list~str~ allowed_dimensions
+        +MetricStatus status
+        +is_certified() bool
+    }
+    class MetricCatalog {
+        +for_user(user, certified_only) list~Metric~
+        +get(code) Metric
+    }
+    class SemanticCompiler {
+        +validate(query, user) list~str~
+        +compile(query) CompiledSql
+    }
+    class TrinoGateway {
+        +execute(sql, user, limit) QueryResult
+        -suppress_small_groups(result, k) QueryResult
+    }
+    class QueryResult {
+        +list~Column~ columns
+        +list~list~ rows
+        +datetime data_as_of
+        +int suppressed_cells
+    }
+    class Guardrails {
+        +check(message, user) GuardResult
+    }
+    class QueryPlanner {
+        +plan(message, metrics, history) Plan
+    }
+    class Plan {
+        <<union>>
+        +PlanKind kind
+        +SemanticQuery query
+        +Clarify clarify
+        +str refusal_reason
+    }
+    class AnswerWriter {
+        +write(question, result, query) AsyncIterator~str~
+    }
+    class LLMAdapter {
+        <<interface>>
+        +complete_json(system, messages, schema) dict
+        +stream(system, messages) AsyncIterator~str~
+    }
+    class AssistantService {
+        +ask(conversation, request, user) AsyncIterator~AssistantEvent~
+    }
+
+    AssistantService --> Guardrails
+    AssistantService --> QueryPlanner
+    AssistantService --> SemanticCompiler
+    AssistantService --> TrinoGateway
+    AssistantService --> AnswerWriter
+    QueryPlanner --> MetricCatalog
+    QueryPlanner --> LLMAdapter
+    AnswerWriter --> LLMAdapter
+    QueryPlanner --> Plan
+    SemanticCompiler --> SemanticQuery
+    SemanticCompiler --> Metric
+    TrinoGateway --> QueryResult
+    MetricCatalog --> Metric
+```
+
+#### 2. Cấp quyền và chính sách
+
+```mermaid
+classDiagram
+    direction TB
+
+    class AccessRequest {
+        +int id
+        +UUID requester_id
+        +ResourceType resource_type
+        +str resource_id
+        +str purpose
+        +int requested_days
+        +AccessRequestStatus status
+        +approve(reviewer, days) AccessGrant
+        +reject(reviewer, note) void
+        +cancel(actor) void
+    }
+    class AccessGrant {
+        +int id
+        +UUID user_id
+        +datetime valid_from
+        +datetime valid_to
+        +datetime revoked_at
+        +is_effective(now) bool
+        +revoke(actor) void
+    }
+    class AccessPolicy {
+        +ensure_can_review(reviewer, request) void
+        +ensure_valid_days(days) void
+    }
+    class AccessService {
+        +create_request(user, input) AccessRequest
+        +decide(id, reviewer, decision) AccessRequest
+        +expire_due(now) int
+    }
+    class ScopeResolver {
+        +resolve(user) EffectiveScope
+    }
+    class EffectiveScope {
+        +set~RoleCode~ roles
+        +set~str~ org_units
+        +list~AccessGrant~ grants
+        +max_sensitivity(dataset) Sensitivity
+    }
+    class DataPolicy {
+        +int dataset_id
+        +RoleCode role
+        +str row_filter
+        +list~ColumnRule~ column_rules
+        +int version
+    }
+    class OpaBundlePublisher {
+        +publish() BundleVersion
+        +simulate(dataset, as_user, draft) TabularResult
+    }
+
+    AccessService --> AccessPolicy
+    AccessService --> AccessRequest
+    AccessRequest --> AccessGrant : approve()
+    AccessService --> OpaBundlePublisher
+    OpaBundlePublisher --> ScopeResolver
+    OpaBundlePublisher --> DataPolicy
+    ScopeResolver --> EffectiveScope
+    EffectiveScope --> AccessGrant
+```
+
+#### 3. Chất lượng dữ liệu trong pipeline
+
+```mermaid
+classDiagram
+    direction LR
+
+    class DqRule {
+        <<abstract>>
+        +int id
+        +int dataset_id
+        +str column
+        +Severity severity
+        +Dimension dimension
+        +int version
+        +to_violation_sql(table) str
+    }
+    class NotNullRule
+    class UniqueRule
+    class RangeRule {
+        +float min
+        +float max
+    }
+    class RegexRule {
+        +str pattern
+    }
+    class ReferenceRule {
+        +str ref_dataset
+        +str ref_column
+    }
+    class CustomSqlRule {
+        +str sql
+    }
+    class DqRunner {
+        +run(dataset, run_id, staging_table) DqOutcome
+    }
+    class QuarantineWriter {
+        +write(run_id, rows, rule_ids) int
+    }
+    class DqOutcome {
+        +int evaluated
+        +int quarantined
+        +list~RuleResult~ results
+        +bool blocking_failed
+    }
+    class IssueTracker {
+        +upsert_from(results, run_id) list~DqIssue~
+    }
+
+    DqRule <|-- NotNullRule
+    DqRule <|-- UniqueRule
+    DqRule <|-- RangeRule
+    DqRule <|-- RegexRule
+    DqRule <|-- ReferenceRule
+    DqRule <|-- CustomSqlRule
+    DqRunner --> DqRule
+    DqRunner --> QuarantineWriter
+    DqRunner --> DqOutcome
+    DqRunner --> IssueTracker
+```
+
+### 8.3. Sơ đồ tuần tự
+
+Mỗi sơ đồ gắn User Story và operation OpenAPI tương ứng.
+
+#### Upload file, ingest và kiểm tra chất lượng (US05, US18 — `POST /sources/{id}/uploads`, `POST /sources/{id}/runs`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor E as Data Engineer
+    participant W as Web App
+    participant A as Platform API
+    participant S3 as MinIO
+    participant DB as PostgreSQL
+    participant D as Dagster
+    participant T as Trino
+
+    E->>W: Kéo-thả hocphi_HK1.xlsx (P14)
+    W->>A: POST /sources/7/uploads (multipart)
+    A->>A: require_role(DATA_ENGINEER), kiểm tra ≤ 50 MB, định dạng
+    A->>A: So header với file_template, tính SHA-256
+    A->>DB: Tìm ingestion_batches trùng checksum
+    alt Header sai
+        A-->>W: 422 problem+json (cột thiếu)
+    else Hợp lệ
+        A->>S3: Lưu file tạm (uploads/)
+        A-->>W: 201 UploadResult (preview 20 dòng, duplicateOfBatchId?)
+    end
+    E->>W: Nhấn "Ingest"
+    W->>A: POST /sources/7/runs {uploadId}
+    A->>DB: INSERT ingestion_batches, pipeline_runs (QUEUED)
+    A->>D: Launch job ingest_source(run_id)
+    A-->>W: 202 PipelineRun
+    W->>A: GET /runs/{id}/logs (SSE)
+    D->>T: Bronze — append + batch_id
+    D->>T: Standardize theo mapping đang dùng
+    D->>T: Chạy SQL vi phạm cho từng dq_rule ACTIVE
+    D->>DB: INSERT dq_rule_results, upsert dq_issues
+    alt Có vi phạm BLOCKING
+        D->>T: Ghi bản ghi lỗi vào Quarantine
+    end
+    D->>T: dbt MERGE Silver (idempotent), build Gold
+    D->>DB: Cập nhật run (SUCCEEDED | PARTIAL), datasets.last_updated_at, lineage
+    A-->>W: SSE status + end
+    W-->>E: Badge kết quả, liên kết issue nếu PARTIAL
+```
+
+#### Truy vấn widget dashboard có phân quyền (US27 — `POST /semantic/query`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Report Viewer (Khoa CNTT)
+    participant W as Web App
+    participant A as Platform API
+    participant SC as SemanticCompiler
+    participant G as TrinoGateway
+    participant T as Trino
+    participant O as OPA
+    participant DB as PostgreSQL
+
+    V->>W: Mở dashboard "Tổng quan đào tạo", chọn năm học
+    W->>A: POST /semantic/query {metrics, dimensions, filters}
+    A->>SC: validate(query, user)
+    SC->>DB: Đọc metric, dimension cho phép
+    alt Metric/dimension không hợp lệ hoặc không có quyền
+        SC-->>A: lỗi
+        A-->>W: 403 / 422 problem+json
+    else Hợp lệ
+        SC-->>A: SQL đã biên dịch
+        A->>G: execute(sql, user)
+        G->>T: Query với X-Trino-User = viewer
+        T->>O: Quyền bảng? row filter? column mask?
+        O-->>T: faculty_code = 'CNTT', mask cột CONFIDENTIAL
+        T-->>G: Kết quả đã lọc
+        G->>G: Ẩn ô có nhóm < 5 (BR12)
+        G->>DB: INSERT audit_logs (QUERY, ALLOW)
+        G-->>A: QueryResult (dataAsOf, suppressedCells)
+        A-->>W: 200 QueryResult
+        W-->>V: Biểu đồ chỉ gồm dữ liệu khoa CNTT, ô "< 5"
+    end
+```
+
+#### Yêu cầu và phê duyệt truy cập (US23 — `POST /access-requests`, `POST /access-requests/{id}/decision`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Report Viewer
+    actor S as Data Steward
+    participant W as Web App
+    participant A as Platform API
+    participant AS as AccessService
+    participant DB as PostgreSQL
+    participant P as OpaBundlePublisher
+    participant O as OPA
+    participant K as App Worker
+
+    V->>W: Nhấn "Yêu cầu quyền" trên tab Tài chính 🔒
+    W->>A: POST /access-requests {PROFILE_FACET, FINANCE, purpose, 90 ngày}
+    A->>AS: create_request()
+    AS->>DB: INSERT access_requests (PENDING), notifications cho Steward
+    A-->>W: 201 AccessRequest
+    S->>W: Mở P24 "Chờ tôi duyệt"
+    W->>A: POST /access-requests/55/decision {APPROVE, grantedDays: 60}
+    A->>AS: decide()
+    AS->>AS: Kiểm tra Steward phụ trách, không tự duyệt, ≤ 180 ngày
+    AS->>DB: UPDATE request APPROVED, INSERT access_grants, audit
+    AS->>P: publish()
+    P->>DB: Đọc grant + chính sách hiệu lực
+    P->>O: PUT bundle mới
+    A-->>W: 200 AccessRequest
+    A-->>V: Thông báo "Yêu cầu được duyệt"
+    Note over K,DB: Hằng giờ
+    K->>DB: expire_access() — grant quá hạn → EXPIRED
+    K->>P: publish() để thu hồi trên Trino
+```
+
+#### Hỏi trợ lý trên dữ liệu được cấp quyền (US39 — `POST /assistant/conversations/{id}/messages`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Report Viewer
+    participant W as Web App
+    participant A as Platform API
+    participant GR as Guardrails
+    participant PL as QueryPlanner
+    participant L as LLM Provider
+    participant SC as SemanticCompiler
+    participant G as TrinoGateway
+    participant AW as AnswerWriter
+    participant DB as PostgreSQL
+
+    V->>W: "Tỉ lệ cảnh báo học vụ khoa CNTT theo học kỳ năm 2025?"
+    W->>A: POST /assistant/conversations/{id}/messages (SSE)
+    A->>GR: check(message, user)
+    alt Chủ đề chặn / prompt injection
+        GR-->>A: refuse
+        A-->>W: SSE final {REFUSED, BLOCKED_TOPIC}
+    else Hợp lệ
+        A-->>W: SSE status PLANNING
+        A->>PL: plan(message, metrics CERTIFIED của người hỏi)
+        PL->>L: Danh mục metric + câu hỏi (không có dữ liệu dòng)
+        L-->>PL: SemanticQuery JSON
+        alt Mơ hồ
+            PL-->>A: Clarify(options)
+            A-->>W: SSE clarify
+        else Rõ ràng
+            A->>SC: validate + compile
+            A-->>W: SSE status QUERYING
+            A->>G: execute(sql, user) — RLS/CLS + k = 5
+            alt Vượt quyền
+                G-->>A: AccessDenied
+                A-->>W: SSE final {REFUSED, OUT_OF_SCOPE, requestable}
+            else Có kết quả
+                G-->>A: QueryResult tổng hợp
+                A->>AW: write(question, result)
+                AW->>L: Kết quả tổng hợp + yêu cầu diễn giải
+                L-->>AW: token stream
+                AW-->>W: SSE token
+                A-->>W: SSE final {ANSWERED, metricCodes, filters, dataAsOf, sql}
+            end
+        end
+    end
+    A->>DB: INSERT qa_messages, audit_logs (QA_ASK)
+    W-->>V: Thẻ câu trả lời "Do AI tạo" + biểu đồ + nguồn
+```
+
+## Tài liệu
+
+- **Yêu cầu:** [Phân tích top-down](#1-phân-tích-đề-bài-top-down-research), [User Story INVEST, BR, AC, Use Case](#2-requirements--use-case-user-stories-invest-acceptance-criteria), [Yêu cầu phi chức năng](docs/requirements/non-functional-requirements.md).
+- **UI/UX:** [Kiến trúc thông tin](#3-kiến-trúc-thông-tin-information-architecture), [Thiết kế UI/UX và tương tác](#4-thiết-kế-uiux-và-tương-tác-front-end).
+- **Mind map:**
+  - [Product mind map](assets/product-mind-map.png)
+  - [Phân rã top-down](assets/mindmaps/problem-decomposition.svg)
+  - [Tương tác FE](assets/mindmaps/fe-interactions.svg)
+  - [Sitemap](<assets/AiiA – Nền tảng Data Lakehouse hồ sơ 360°.png>)
+  - Mã nguồn sơ đồ: [assets/mindmaps](assets/mindmaps), [scripts/mindmap_to_svg.py](scripts/mindmap_to_svg.py).
+- **Kiến trúc:** [C4](#5-kiến-trúc-c4), [Quyết định kiến trúc](#54-quyết-định-kiến-trúc).
+- **Cơ sở dữ liệu:** [ER và từ điển dữ liệu](docs/DATABASE.md), [DBML](src/database/aiia.dbml), [PostgreSQL schema](src/database/aiia.sql).
+- **Hợp đồng API:** [OpenAPI 3.0.4](docs/api/openapi.yaml).
+
+## Tiến độ dự án
+
+- [x] Phân tích đề bài top-down, mục tiêu, bên liên quan, nguồn dữ liệu, phạm vi, rủi ro
+- [x] Viết User Story theo INVEST, Business Rule, Acceptance Criteria
+- [x] Xác định Use Case, tác nhân, ma trận phân quyền, trạng thái nghiệp vụ
+- [x] Viết yêu cầu phi chức năng
+- [x] Thiết kế kiến trúc thông tin, sitemap, Section từng trang, luồng điều hướng
+- [x] Thiết kế UI/UX: app shell, mẫu tương tác, wireframe, trạng thái giao diện
+- [x] Thiết kế C4 System Context, Container, Component và Code level
+- [x] Thiết kế schema PostgreSQL control plane, mô hình Gold, DBML
+- [x] Viết tài liệu API OpenAPI 3.0
+- [x] Thiết kế cấu trúc thư mục Angular, FastAPI, Dagster + dbt
+- [x] Hướng dẫn chạy: [docs/RUNNING.md](docs/RUNNING.md)
+- [x] Thiết kế sơ đồ lớp và sơ đồ tuần tự
+- [x] Bộ sinh dữ liệu giả lập và mock source (API + Postgres), kèm test
+- [x] `compose.yaml` một file, chia profiles; Dockerfile theo khuôn uv (builder + runtime slim)
+- [x] Cấu hình hạ tầng: Postgres, MinIO, Trino, Prometheus, Loki, Tempo, Grafana, Debezium
+- [ ] Keycloak và OPA (chưa đưa vào compose; phân quyền hiện chưa thực thi tại Trino)
+- [x] Skeleton pipeline: landing (dlt) → bronze (PyIceberg) → DQ (Soda) → silver/gold (dbt)
+- [ ] Đối soát danh tính, DQ quy tắc từ UI, nạp Gold đầy đủ
+- [x] Skeleton Platform API (health, readiness) với test
+- [ ] Platform API theo OpenAPI, kiểm thử hợp đồng và ma trận quyền
+- [x] Skeleton Angular 19 (standalone, lazy route, gọi health API)
+- [ ] Angular Web App: hồ sơ 360°, dashboard, tích hợp, quản trị dữ liệu
+- [ ] [ADV] Semantic model, trợ lý hỏi-đáp, benchmark trong CI
+- [ ] [ADV] Lineage, phát hiện bất thường, báo cáo tự động, chính sách dòng/cột

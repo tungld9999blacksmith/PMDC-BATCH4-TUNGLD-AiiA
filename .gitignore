@@ -11,3 +11,6 @@ dist/
 dbt_packages/
 *.log
 .venv/
+# Lưu trữ cục bộ khi chạy dev (file upload/export, secret nguồn)
+**/.data/
+**/.secrets/

@@ -1,0 +1,18 @@
+{
+  "name": "aiia-sis-source",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "aiia",
+    "database.password": "aiia_dev_password",
+    "database.dbname": "mock_source",
+    "topic.prefix": "aiia.sis",
+    "plugin.name": "pgoutput",
+    "slot.name": "aiia_sis_slot",
+    "publication.name": "aiia_sis_pub",
+    "publication.autocreate.mode": "disabled",
+    "table.include.list": "public.sis_students,public.sis_enrollments",
+    "snapshot.mode": "initial"
+  }
+}

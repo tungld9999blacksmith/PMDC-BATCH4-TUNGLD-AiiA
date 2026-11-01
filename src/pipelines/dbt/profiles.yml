@@ -1,0 +1,13 @@
+aiia:
+  target: dev
+  outputs:
+    dev:
+      type: trino
+      method: none
+      user: aiia
+      host: "{{ env_var('TRINO_HOST', 'localhost') }}"
+      port: "{{ env_var('TRINO_PORT', '8080') | int }}"
+      database: iceberg
+      schema: default
+      threads: 4
+      http_scheme: http

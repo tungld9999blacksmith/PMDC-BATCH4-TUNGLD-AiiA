@@ -1,0 +1,8 @@
+data_source lakehouse:
+  type: trino
+  host: ${TRINO_HOST}
+  port: ${TRINO_PORT}
+  username: aiia
+  catalog: iceberg
+  schema: bronze
+  http_scheme: http

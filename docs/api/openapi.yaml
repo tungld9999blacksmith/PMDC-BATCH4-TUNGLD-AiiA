@@ -1,0 +1,3168 @@
+openapi: 3.0.4
+info:
+  title: AiiA Platform API
+  version: 0.1.0
+  description: |
+    Hợp đồng HTTP giữa Web App (Angular) và Platform API (FastAPI) của **AiiA – Nền tảng Data Lakehouse hồ sơ 360°**.
+
+    - **Xác thực:** OIDC qua SSO của trường (Keycloak). Mọi endpoint yêu cầu `Authorization: Bearer <access_token>`.
+    - **Phân quyền:** `x-roles` liệt kê vai trò được gọi. Ngoài vai trò, truy vấn dữ liệu luôn áp phạm vi đơn vị (dòng),
+      mức nhạy cảm (cột) và quyền dataset/dashboard còn hạn (BR08). Truy vấn dữ liệu chạy dưới danh tính người gọi (BR11).
+    - **Phạm vi:** `x-scope: MVP | ADV` cho biết endpoint thuộc yêu cầu cơ bản hay nâng cao.
+    - **Không rò rỉ sự tồn tại:** tài nguyên ngoài phạm vi trả `404`, giống tài nguyên không tồn tại (AC11).
+    - **Lỗi:** RFC 7807 (`application/problem+json`).
+    - **Audit:** mọi thao tác đọc dữ liệu cá nhân, export, thay đổi quyền/chính sách và câu hỏi gửi trợ lý đều được ghi audit (BR10).
+  license:
+    name: CC BY 4.0 (tài liệu)
+    url: https://creativecommons.org/licenses/by/4.0/
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Docker Compose local
+security:
+  - bearerAuth: []
+tags:
+  - name: Me
+    description: Phiên, quyền của tôi, trang chủ, thông báo
+  - name: Profiles
+    description: Hồ sơ 360° sinh viên, giảng viên, cán bộ
+  - name: Sources
+    description: Nguồn dữ liệu, upload, lịch, ánh xạ schema
+  - name: Runs
+    description: Lần chạy pipeline
+  - name: Catalog
+    description: Dataset, cột, xem trước, glossary
+  - name: Data Quality
+    description: Quy tắc, điểm chất lượng, issue
+  - name: Identity
+    description: Đối soát danh tính
+  - name: Access
+    description: Yêu cầu và cấp quyền truy cập
+  - name: Dashboards
+    description: Dashboard, chia sẻ, export
+  - name: Semantic
+    description: Truy vấn ngữ nghĩa, metric, dimension
+  - name: Reports
+    description: Báo cáo tự động (ADV)
+  - name: Alerts
+    description: Cảnh báo bất thường (ADV)
+  - name: Lineage
+    description: Lineage và phân tích tác động (ADV)
+  - name: Assistant
+    description: Trợ lý hỏi-đáp (ADV)
+  - name: Admin
+    description: Người dùng, chính sách, audit, chủ đề chặn
+
+paths:
+  # ───────────────────────── Me ─────────────────────────
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMe
+      summary: Thông tin người dùng hiện tại, vai trò và phạm vi (US03)
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+              example:
+                id: 6f1c2a10-0000-4000-8000-000000000001
+                email: lan.nt@uni.edu.vn
+                fullName: Nguyễn Thị Lan
+                orgUnit: { code: PDT, name: Phòng Đào tạo }
+                roles: [{ role: REPORT_VIEWER, scopeOrgUnit: null }, { role: BI_ANALYST, scopeOrgUnit: null }]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/grants:
+    get:
+      tags: [Me]
+      operationId: listMyGrants
+      summary: Quyền dữ liệu/dashboard đang hiệu lực (AC03)
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AccessGrant' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/home:
+    get:
+      tags: [Me]
+      operationId: getHomeSummary
+      summary: Dữ liệu widget trang chủ theo vai trò (P02)
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HomeSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me/logout:
+    post:
+      tags: [Me]
+      operationId: logout
+      summary: Thu hồi phiên hiện tại (US02)
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '204': { description: Đã đăng xuất }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications:
+    get:
+      tags: [Me]
+      operationId: listNotifications
+      summary: Thông báo của tôi
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/{notificationId}/read:
+    post:
+      tags: [Me]
+      operationId: markNotificationRead
+      summary: Đánh dấu đã đọc
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - { name: notificationId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Profiles ─────────────────────────
+  /profiles:
+    get:
+      tags: [Profiles]
+      operationId: searchProfiles
+      summary: Tìm kiếm hồ sơ 360° trong phạm vi quyền (US11)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/SubjectType' } }
+        - { name: orgUnit, in: query, schema: { type: string }, example: CNTT }
+        - { name: cohort, in: query, schema: { type: string }, example: K66 }
+        - { name: status, in: query, schema: { type: string }, example: STUDYING }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK — chỉ chứa hồ sơ trong phạm vi quyền
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/ProfileSummary' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /profiles/{personId}:
+    get:
+      tags: [Profiles]
+      operationId: getProfile
+      summary: Header, KPI và danh sách facet của hồ sơ (US12–US14)
+      description: 'Ghi audit `PROFILE_VIEW`. Trường không có quyền trả về dạng che (`masked: true`).'
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - { name: role, in: query, description: Vai trò cần xem khi một người có nhiều vai trò, schema: { $ref: '#/components/schemas/SubjectType' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile360' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{personId}/facets/{facet}:
+    get:
+      tags: [Profiles]
+      operationId: getProfileFacet
+      summary: Dữ liệu một tab hồ sơ (Học tập, Tài chính, Giảng dạy...)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - { name: facet, in: path, required: true, schema: { $ref: '#/components/schemas/FacetCode' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacetData' }
+        '403':
+          description: Không có quyền xem facet — FE hiển thị khóa và nút yêu cầu quyền
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example:
+                type: https://aiia.local/problems/facet-locked
+                title: Facet bị khóa
+                status: 403
+                detail: Bạn chưa có quyền xem tab Tài chính.
+                requestable: { resourceType: PROFILE_FACET, resourceId: FINANCE }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{personId}/timeline:
+    get:
+      tags: [Profiles]
+      operationId: getProfileTimeline
+      summary: Dòng thời gian sự kiện (US15) — chỉ sự kiện thuộc facet được phép
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - { name: eventType, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: source, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: before, in: query, description: Con trỏ phân trang (event_time), schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/TimelineEvent' } }
+                  nextBefore: { type: string, format: date-time, nullable: true }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{personId}/attributes/{attribute}/provenance:
+    get:
+      tags: [Profiles]
+      operationId: getAttributeProvenance
+      summary: Nguồn gốc một thuộc tính (US16)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - { name: attribute, in: path, required: true, schema: { type: string }, example: email }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttributeProvenance' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Sources ─────────────────────────
+  /sources:
+    get:
+      tags: [Sources]
+      operationId: listSources
+      summary: Danh sách nguồn dữ liệu
+      x-roles: [DATA_ENGINEER, DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/SourceType' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/SourceStatus' } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/DataSource' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Sources]
+      operationId: createSource
+      summary: Đăng ký nguồn (US04) — tạo ở trạng thái DRAFT
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DataSourceInput' }
+            example:
+              code: SRC-FIN
+              name: Tài chính – học phí
+              type: FILE
+              businessOwner: Phòng Kế hoạch – Tài chính
+              purpose: Theo dõi tình trạng học phí phục vụ cảnh báo học vụ và hỗ trợ sinh viên
+              legalBasisRef: QĐ 1234/QĐ-ĐH ngày 01/09/2026
+              sensitivity: CONFIDENTIAL
+              subjectTypes: [STUDENT]
+              fileTemplate: { requiredColumns: [ma_sv, hoc_ky, so_tien_phai_nop, so_tien_da_nop] }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSource' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}:
+    get:
+      tags: [Sources]
+      operationId: getSource
+      summary: Chi tiết nguồn
+      x-roles: [DATA_ENGINEER, DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Sources]
+      operationId: updateSource
+      summary: Cập nhật nguồn, kích hoạt/tạm dừng (status)
+      description: Chuyển sang `ACTIVE` yêu cầu đã kiểm tra kết nối thành công (AC04).
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DataSourcePatch' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataSource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}/connection-test:
+    post:
+      tags: [Sources]
+      operationId: testSourceConnection
+      summary: Kiểm tra kết nối JDBC/API
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secret: { type: string, writeOnly: true, description: "Mật khẩu/token mới — được lưu vào secret store, không lưu DB" }
+      responses:
+        '200':
+          description: Kết quả kiểm tra
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionTestResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}/uploads:
+    post:
+      tags: [Sources]
+      operationId: uploadSourceFile
+      summary: Upload CSV/XLSX, kiểm tra và xem trước (US05)
+      description: Chưa ingest. Gọi `triggerRun` với `uploadId` để ingest.
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: CSV hoặc XLSX ≤ 50 MB }
+      responses:
+        '201':
+          description: Upload hợp lệ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413':
+          description: File vượt 50 MB
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: Sai định dạng hoặc header không khớp template
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example:
+                type: https://aiia.local/problems/header-mismatch
+                title: Header không khớp template
+                status: 422
+                errors: [{ field: so_tien_da_nop, message: Thiếu cột bắt buộc }]
+  /sources/{sourceId}/schedule:
+    put:
+      tags: [Sources]
+      operationId: setSourceSchedule
+      summary: Lập lịch ingest (US06)
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Schedule' }
+            example: { cron: '0 2 * * *', paused: false }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Schedule'
+                  - type: object
+                    properties:
+                      nextRunAt: { type: string, format: date-time, nullable: true }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}/mappings:
+    get:
+      tags: [Sources]
+      operationId: listMappings
+      summary: Các phiên bản ánh xạ schema (US08)
+      x-roles: [DATA_ENGINEER, DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/SchemaMapping' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Sources]
+      operationId: createMappingVersion
+      summary: Lưu phiên bản mapping mới và kích hoạt
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchemaMappingInput' }
+      responses:
+        '201':
+          description: Đã tạo phiên bản mới
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemaMapping' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}/mappings/preview:
+    post:
+      tags: [Sources]
+      operationId: previewMapping
+      summary: Xem trước kết quả biến đổi theo mapping (AC08) và [ADV] danh sách ảnh hưởng (AC32)
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchemaMappingInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MappingPreview' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sources/{sourceId}/runs:
+    post:
+      tags: [Runs]
+      operationId: triggerRun
+      summary: Chạy ingest ngay (thủ công hoặc với file đã upload)
+      x-roles: [DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/SourceId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uploadId: { type: string, format: uuid }
+                confirmDuplicate: { type: boolean, default: false, description: Bắt buộc true khi file trùng checksum (AC05) }
+      responses:
+        '202':
+          description: Đã xếp hàng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipelineRun' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Nguồn không ACTIVE, đang có run chạy, hoặc file trùng chưa xác nhận
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ───────────────────────── Runs ─────────────────────────
+  /runs:
+    get:
+      tags: [Runs]
+      operationId: listRuns
+      summary: Danh sách lần chạy (US07)
+      x-roles: [DATA_ENGINEER, DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters:
+        - { name: sourceId, in: query, schema: { type: integer, format: int64 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/RunStatus' } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/PipelineRun' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /runs/{runId}:
+    get:
+      tags: [Runs]
+      operationId: getRun
+      summary: Chi tiết lần chạy, các bước và kết quả DQ
+      x-roles: [DATA_ENGINEER, DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipelineRunDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /runs/{runId}/logs:
+    get:
+      tags: [Runs]
+      operationId: streamRunLogs
+      summary: Log lần chạy theo thời gian thực (SSE)
+      x-roles: [DATA_ENGINEER, DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: |
+            Luồng `text/event-stream`. Sự kiện: `log` ({ts, level, step, message}), `status` (PipelineRun), `end`.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /runs/{runId}/rerun:
+    post:
+      tags: [Runs]
+      operationId: rerunRun
+      summary: Chạy lại (idempotent — BR14) hoặc xử lý lại quarantine
+      x-roles: [DATA_ENGINEER, DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [RERUN, REPROCESS_QUARANTINE], default: RERUN }
+      responses:
+        '202':
+          description: Đã xếp hàng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipelineRun' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Catalog ─────────────────────────
+  /datasets:
+    get:
+      tags: [Catalog]
+      operationId: searchDatasets
+      summary: Tìm dataset trong catalog (US21) — trả metadata cả khi chưa có quyền dữ liệu
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: layer, in: query, schema: { $ref: '#/components/schemas/DataLayer' } }
+        - { name: sourceId, in: query, schema: { type: integer, format: int64 } }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: sensitivity, in: query, schema: { $ref: '#/components/schemas/Sensitivity' } }
+        - { name: accessible, in: query, description: Chỉ dataset tôi đã có quyền, schema: { type: boolean } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/Dataset' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /datasets/{datasetId}:
+    get:
+      tags: [Catalog]
+      operationId: getDataset
+      summary: Chi tiết dataset, schema cột, DQ, mức sử dụng
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DatasetId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatasetDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /datasets/{datasetId}/columns/{columnId}:
+    patch:
+      tags: [Catalog]
+      operationId: updateDatasetColumn
+      summary: Gắn mức nhạy cảm, mô tả, thuật ngữ cho cột (US22)
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+        - { name: columnId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sensitivity: { $ref: '#/components/schemas/Sensitivity' }
+                description: { type: string }
+                glossaryTermId: { type: integer, format: int64, nullable: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatasetColumn' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /datasets/{datasetId}/preview:
+    get:
+      tags: [Catalog]
+      operationId: previewDataset
+      summary: Xem trước tối đa 100 dòng, đã che theo quyền (US09, AC09)
+      x-roles: [DATA_ENGINEER, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: snapshotId, in: query, description: Time-travel theo snapshot Iceberg, schema: { type: string } }
+        - { name: batchId, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TabularResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /glossary:
+    get:
+      tags: [Catalog]
+      operationId: listGlossaryTerms
+      summary: Danh sách thuật ngữ
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/Q' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GlossaryTerm' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Catalog]
+      operationId: createGlossaryTerm
+      summary: Thêm thuật ngữ
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GlossaryTermInput' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GlossaryTerm' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /glossary/{termId}:
+    put:
+      tags: [Catalog]
+      operationId: updateGlossaryTerm
+      summary: Sửa thuật ngữ
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - { name: termId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GlossaryTermInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GlossaryTerm' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Data Quality ─────────────────────────
+  /dq/rules:
+    get:
+      tags: [Data Quality]
+      operationId: listDqRules
+      summary: Danh sách quy tắc DQ
+      x-roles: [DATA_STEWARD, DATA_ENGINEER]
+      x-scope: MVP
+      parameters:
+        - { name: datasetId, in: query, schema: { type: integer, format: int64 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DqRuleStatus' } }
+        - { name: dimension, in: query, schema: { $ref: '#/components/schemas/DqDimension' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DqRule' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Data Quality]
+      operationId: createDqRule
+      summary: Tạo quy tắc ở trạng thái DRAFT (US17)
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DqRuleInput' }
+            example:
+              datasetId: 12
+              columnId: 120
+              ruleType: RANGE
+              dimension: VALIDITY
+              severity: BLOCKING
+              params: { min: 0, max: 4 }
+              description: GPA tích lũy nằm trong [0, 4]
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DqRule' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /dq/rules/{ruleId}:
+    patch:
+      tags: [Data Quality]
+      operationId: updateDqRule
+      summary: Sửa quy tắc, kích hoạt (ACTIVE) hoặc tắt (DISABLED)
+      description: Kích hoạt yêu cầu đã chạy thử thành công trên phiên bản hiện tại (AC17).
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RuleId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/DqRuleInput'
+                - type: object
+                  properties:
+                    status: { $ref: '#/components/schemas/DqRuleStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DqRule' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Chưa chạy thử phiên bản hiện tại
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /dq/rules/{ruleId}/dry-run:
+    post:
+      tags: [Data Quality]
+      operationId: dryRunDqRule
+      summary: Chạy thử quy tắc trên dữ liệu mẫu
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RuleId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DryRunResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /dq/scores:
+    get:
+      tags: [Data Quality]
+      operationId: getDqScores
+      summary: Điểm DQ theo dataset/nguồn và 5 chiều, xu hướng 30 ngày (US19)
+      x-roles: [DATA_STEWARD, DATA_ENGINEER, BI_ANALYST, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters:
+        - { name: groupBy, in: query, schema: { type: string, enum: [dataset, source], default: dataset } }
+        - { name: days, in: query, schema: { type: integer, default: 30, maximum: 180 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DqScoreBoard' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /dq/issues:
+    get:
+      tags: [Data Quality]
+      operationId: listDqIssues
+      summary: Danh sách issue (US20)
+      x-roles: [DATA_STEWARD, DATA_ENGINEER]
+      x-scope: MVP
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DqIssueStatus' } }
+        - { name: datasetId, in: query, schema: { type: integer, format: int64 } }
+        - { name: assignee, in: query, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/DqIssue' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /dq/issues/{issueId}:
+    patch:
+      tags: [Data Quality]
+      operationId: updateDqIssue
+      summary: Gán người, đổi trạng thái issue
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/IssueId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { $ref: '#/components/schemas/DqIssueStatus' }
+                assigneeId: { type: string, format: uuid, nullable: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DqIssue' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /dq/issues/{issueId}/comments:
+    post:
+      tags: [Data Quality]
+      operationId: addDqIssueComment
+      summary: Thêm ghi chú
+      x-roles: [DATA_STEWARD, DATA_ENGINEER]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/IssueId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1 }
+      responses:
+        '201':
+          description: Đã thêm
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comment' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Identity ─────────────────────────
+  /identity/candidates:
+    get:
+      tags: [Identity]
+      operationId: listMatchCandidates
+      summary: Hàng đợi cặp nghi trùng (US10)
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/MatchStatus' } }
+        - { name: minScore, in: query, schema: { type: number, minimum: 0, maximum: 1 } }
+        - { name: maxScore, in: query, schema: { type: number, minimum: 0, maximum: 1 } }
+        - { name: source, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/MatchCandidate' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /identity/candidates/{candidateId}/decision:
+    post:
+      tags: [Identity]
+      operationId: decideMatchCandidate
+      summary: Gộp / Không trùng / Để sau
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - { name: candidateId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [MERGE, NOT_MATCH, SKIP] }
+                note: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchCandidate' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Bản ghi đã thay đổi bởi thao tác khác — tải lại cặp
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /identity/persons/{personId}/history:
+    get:
+      tags: [Identity]
+      operationId: getMergeHistory
+      summary: Lịch sử gộp/tách của một person
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/PersonId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/MergeEvent' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /identity/merge-events/{eventId}/unmerge:
+    post:
+      tags: [Identity]
+      operationId: unmerge
+      summary: Tách hồ sơ đã gộp (BR05)
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - { name: eventId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 5 }
+      responses:
+        '200':
+          description: Đã tách
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MergeEvent' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Access ─────────────────────────
+  /access-requests:
+    get:
+      tags: [Access]
+      operationId: listAccessRequests
+      summary: Yêu cầu của tôi (box=mine) hoặc chờ tôi duyệt (box=review, Steward)
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - { name: box, in: query, required: true, schema: { type: string, enum: [mine, review] } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AccessRequestStatus' } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AccessRequest' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Access]
+      operationId: createAccessRequest
+      summary: Gửi yêu cầu truy cập có mục đích và thời hạn (US23)
+      x-roles: [ANY]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccessRequestInput' }
+            example:
+              resourceType: PROFILE_FACET
+              resourceId: FINANCE
+              accessLevel: READ
+              purpose: Rà soát sinh viên nợ học phí khoa CNTT để tư vấn hỗ trợ tài chính
+              scope: { orgUnitCodes: [CNTT] }
+              requestedDays: 90
+      responses:
+        '201':
+          description: Đã gửi (PENDING)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessRequest' }
+        '409':
+          description: Đã có yêu cầu đang chờ hoặc quyền còn hiệu lực cho tài nguyên này
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /access-requests/{requestId}:
+    delete:
+      tags: [Access]
+      operationId: cancelAccessRequest
+      summary: Hủy yêu cầu đang chờ của tôi
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RequestId' }]
+      responses:
+        '204': { description: Đã hủy }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /access-requests/{requestId}/decision:
+    post:
+      tags: [Access]
+      operationId: decideAccessRequest
+      summary: Phê duyệt / từ chối (Steward phụ trách tài nguyên, không tự duyệt)
+      x-roles: [DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/RequestId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [APPROVE, REJECT] }
+                grantedDays: { type: integer, minimum: 1, maximum: 180, description: Có thể rút ngắn so với yêu cầu }
+                note: { type: string, description: Bắt buộc khi REJECT }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /access-grants/{grantId}:
+    delete:
+      tags: [Access]
+      operationId: revokeAccessGrant
+      summary: Thu hồi quyền sớm
+      x-roles: [DATA_STEWARD, PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters:
+        - { name: grantId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204': { description: Đã thu hồi }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Dashboards ─────────────────────────
+  /dashboards:
+    get:
+      tags: [Dashboards]
+      operationId: listDashboards
+      summary: Thư viện dashboard được phép xem (US26)
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: topic, in: query, schema: { $ref: '#/components/schemas/DashboardTopic' } }
+        - { name: favorite, in: query, schema: { type: boolean } }
+        - { name: mine, in: query, description: Gồm dashboard nháp của tôi (Analyst), schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DashboardSummary' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Dashboards]
+      operationId: createDashboard
+      summary: Tạo dashboard nháp (US28)
+      x-roles: [BI_ANALYST]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DashboardInput' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /dashboards/{dashboardId}:
+    get:
+      tags: [Dashboards]
+      operationId: getDashboard
+      summary: Định nghĩa dashboard (widget, bộ lọc) — dữ liệu lấy qua runSemanticQuery
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Dashboards]
+      operationId: saveDashboard
+      summary: Lưu dashboard (owner) — kiểm tra phiên bản lạc quan qua If-Match
+      x-roles: [BI_ANALYST]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/DashboardId'
+        - { name: If-Match, in: header, required: true, schema: { type: string }, description: Giá trị version hiện tại }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DashboardInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '412':
+          description: Dashboard đã bị sửa ở phiên khác
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /dashboards/{dashboardId}/publish:
+    post:
+      tags: [Dashboards]
+      operationId: publishDashboard
+      summary: DRAFT → PUBLISHED (US30)
+      x-roles: [BI_ANALYST]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /dashboards/{dashboardId}/shares:
+    put:
+      tags: [Dashboards]
+      operationId: setDashboardShares
+      summary: Chia sẻ cho vai trò / đơn vị / người dùng
+      x-roles: [BI_ANALYST]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: array, items: { $ref: '#/components/schemas/Share' } }
+            example:
+              - { principalType: ROLE, principalId: REPORT_VIEWER }
+              - { principalType: ORG_UNIT, principalId: CNTT }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Share' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /dashboards/{dashboardId}/favorite:
+    put:
+      tags: [Dashboards]
+      operationId: favoriteDashboard
+      summary: Đánh dấu yêu thích
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      responses:
+        '204': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Dashboards]
+      operationId: unfavoriteDashboard
+      summary: Bỏ yêu thích
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      responses:
+        '204': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /dashboards/{dashboardId}/exports:
+    post:
+      tags: [Dashboards]
+      operationId: exportDashboard
+      summary: Xuất PDF/CSV có watermark (US29) — xử lý bất đồng bộ
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/DashboardId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [format]
+              properties:
+                format: { type: string, enum: [PDF, CSV] }
+                widgetId: { type: integer, format: int64, description: Bắt buộc với CSV }
+                filters: { $ref: '#/components/schemas/FilterList' }
+      responses:
+        '202':
+          description: Đã nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /exports/{exportId}:
+    get:
+      tags: [Dashboards]
+      operationId: getExport
+      summary: Trạng thái export và liên kết tải (hết hạn sau 15 phút)
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - { name: exportId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportJob' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Semantic ─────────────────────────
+  /semantic/query:
+    post:
+      tags: [Semantic]
+      operationId: runSemanticQuery
+      summary: Chạy truy vấn ngữ nghĩa cho widget, drill-down, builder (US27)
+      description: |
+        Semantic Service biên dịch `SemanticQuery` → SQL Trino và thực thi **dưới danh tính người gọi**.
+        Trino + OPA áp row filter và column mask; ô có nhóm < 5 trả `suppressed: true` (BR12).
+      x-roles: [ANY]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SemanticQuery' }
+            example:
+              metrics: [academic_warning_rate]
+              dimensions: [faculty, term]
+              filters: [{ dimension: academic_year, op: eq, value: 2025-2026 }]
+              orderBy: [{ field: term, direction: asc }]
+              limit: 500
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /semantic/metrics:
+    get:
+      tags: [Semantic]
+      operationId: listMetrics
+      summary: Danh sách metric (MVP dùng metric hệ thống; ADV cho phép tự định nghĩa)
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/MetricStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Metric' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Semantic]
+      operationId: createMetric
+      summary: Định nghĩa metric mới (US36)
+      x-roles: [BI_ANALYST]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MetricInput' }
+      responses:
+        '201':
+          description: Đã tạo (DRAFT)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Metric' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /semantic/metrics/{metricCode}:
+    get:
+      tags: [Semantic]
+      operationId: getMetric
+      summary: Chi tiết metric và lịch sử phiên bản
+      x-roles: [ANY]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/MetricCode' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MetricDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Semantic]
+      operationId: updateMetric
+      summary: Sửa metric — tạo phiên bản mới, metric CERTIFIED trở về DRAFT
+      x-roles: [BI_ANALYST]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/MetricCode' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MetricInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Metric' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /semantic/metrics/{metricCode}/certification:
+    post:
+      tags: [Semantic]
+      operationId: certifyMetric
+      summary: Chứng nhận / ngừng dùng metric
+      x-roles: [DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/MetricCode' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [CERTIFIED, DEPRECATED] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Metric' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /semantic/metrics/validate:
+    post:
+      tags: [Semantic]
+      operationId: validateMetric
+      summary: Kiểm tra công thức và xem trước giá trị
+      x-roles: [BI_ANALYST]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MetricInput' }
+      responses:
+        '200':
+          description: Kết quả kiểm tra
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: { type: boolean }
+                  errors: { type: array, items: { type: string } }
+                  preview: { $ref: '#/components/schemas/QueryResult' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /semantic/dimensions:
+    get:
+      tags: [Semantic]
+      operationId: listDimensions
+      summary: Danh sách dimension dùng chung
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Dimension' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ───────────────────────── Reports (ADV) ─────────────────────────
+  /subscriptions:
+    get:
+      tags: [Reports]
+      operationId: listSubscriptions
+      summary: Đăng ký báo cáo của tôi
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Subscription' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Reports]
+      operationId: createSubscription
+      summary: Đăng ký nhận dashboard định kỳ (US37)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionInput' }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /subscriptions/{subscriptionId}:
+    patch:
+      tags: [Reports]
+      operationId: updateSubscription
+      summary: Sửa / tạm dừng đăng ký
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/SubscriptionId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Reports]
+      operationId: deleteSubscription
+      summary: Hủy đăng ký
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/SubscriptionId' }]
+      responses:
+        '204': { description: Đã hủy }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /subscriptions/{subscriptionId}/deliveries:
+    get:
+      tags: [Reports]
+      operationId: listDeliveries
+      summary: Lịch sử gửi
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/SubscriptionId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Delivery' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Alerts (ADV) ─────────────────────────
+  /alerts:
+    get:
+      tags: [Alerts]
+      operationId: listAlerts
+      summary: Cảnh báo bất thường trên đối tượng tôi có quyền (US35)
+      x-roles: [DATA_STEWARD, DATA_ENGINEER, REPORT_VIEWER]
+      x-scope: ADV
+      parameters:
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/DetectorKind' } }
+        - { name: severity, in: query, schema: { $ref: '#/components/schemas/AlertSeverity' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AlertStatus' } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /alerts/{alertId}:
+    get:
+      tags: [Alerts]
+      operationId: getAlert
+      summary: Chi tiết cảnh báo kèm chuỗi thời gian và dải kỳ vọng
+      x-roles: [DATA_STEWARD, DATA_ENGINEER, REPORT_VIEWER]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/AlertId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /alerts/{alertId}/transition:
+    post:
+      tags: [Alerts]
+      operationId: transitionAlert
+      summary: Xác nhận / xử lý xong / bỏ qua (BR17)
+      x-roles: [DATA_STEWARD, DATA_ENGINEER, REPORT_VIEWER]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/AlertId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { type: string, enum: [ACKNOWLEDGED, RESOLVED, DISMISSED] }
+                note: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Chuyển trạng thái không hợp lệ
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ───────────────────────── Lineage (ADV) ─────────────────────────
+  /lineage:
+    get:
+      tags: [Lineage]
+      operationId: getLineage
+      summary: Đồ thị lineage quanh một nút (US31)
+      x-roles: [PLATFORM_ADMIN, DATA_ENGINEER, DATA_STEWARD, BI_ANALYST]
+      x-scope: ADV
+      parameters:
+        - { name: nodeType, in: query, required: true, schema: { $ref: '#/components/schemas/LineageNodeType' } }
+        - { name: refId, in: query, required: true, schema: { type: string } }
+        - { name: direction, in: query, schema: { type: string, enum: [UPSTREAM, DOWNSTREAM, BOTH], default: BOTH } }
+        - { name: depth, in: query, schema: { type: integer, minimum: 1, maximum: 6, default: 2 } }
+        - { name: columnLevel, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineageGraph' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /lineage/impact:
+    get:
+      tags: [Lineage]
+      operationId: getImpact
+      summary: Toàn bộ thành phần phía sau bị ảnh hưởng (US32)
+      x-roles: [PLATFORM_ADMIN, DATA_ENGINEER, DATA_STEWARD, BI_ANALYST]
+      x-scope: ADV
+      parameters:
+        - { name: nodeType, in: query, required: true, schema: { $ref: '#/components/schemas/LineageNodeType' } }
+        - { name: refId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/LineageNode' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Assistant (ADV) ─────────────────────────
+  /assistant/conversations:
+    get:
+      tags: [Assistant]
+      operationId: listConversations
+      summary: Hội thoại của tôi
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Conversation' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Assistant]
+      operationId: createConversation
+      summary: Tạo hội thoại mới (có thể gắn ngữ cảnh dashboard)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dashboardId: { type: integer, format: int64, nullable: true }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conversation' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /assistant/conversations/{conversationId}:
+    get:
+      tags: [Assistant]
+      operationId: getConversation
+      summary: Hội thoại và các tin nhắn
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/ConversationId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Conversation'
+                  - type: object
+                    properties:
+                      messages: { type: array, items: { $ref: '#/components/schemas/AssistantMessage' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /assistant/conversations/{conversationId}/messages:
+    post:
+      tags: [Assistant]
+      operationId: askAssistant
+      summary: Hỏi trợ lý trên dữ liệu được cấp quyền (US39) — trả SSE
+      description: |
+        Luồng xử lý: kiểm tra chủ đề chặn → LLM đề xuất `SemanticQuery` chỉ trên metric `CERTIFIED` người hỏi có quyền
+        → Semantic Service biên dịch → Trino thực thi dưới danh tính người hỏi → LLM diễn giải kết quả.
+        LLM **không** sinh SQL trực tiếp và **không** nhận dữ liệu dòng chi tiết `RESTRICTED`.
+
+        Sự kiện SSE:
+        - `status` — `{stage: CHECKING | PLANNING | QUERYING | WRITING}`
+        - `clarify` — `{question, options: [{label, patch}]}` khi câu hỏi mơ hồ
+        - `token` — `{text}` văn bản câu trả lời theo luồng
+        - `final` — `AssistantMessage` hoàn chỉnh (status ANSWERED | CLARIFYING | REFUSED | FAILED)
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/ConversationId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AskRequest' }
+            example: { message: "Tỉ lệ sinh viên bị cảnh báo học vụ của khoa CNTT theo học kỳ năm 2025?" }
+      responses:
+        '200':
+          description: Luồng SSE
+          content:
+            text/event-stream:
+              schema: { type: string }
+              example: |
+                event: status
+                data: {"stage":"PLANNING"}
+
+                event: token
+                data: {"text":"Tỉ lệ cảnh báo học vụ khoa CNTT giảm từ 5,2% ..."}
+
+                event: final
+                data: {"id":981,"status":"ANSWERED","metricCodes":["academic_warning_rate"],"dataAsOf":"2026-10-30T06:00:00Z"}
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /assistant/messages/{messageId}/feedback:
+    post:
+      tags: [Assistant]
+      operationId: rateAssistantMessage
+      summary: Phản hồi hữu ích / không hữu ích
+      x-roles: [REPORT_VIEWER, BI_ANALYST, DATA_STEWARD]
+      x-scope: ADV
+      parameters:
+        - { name: messageId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, enum: [-1, 1] }
+                comment: { type: string }
+      responses:
+        '204': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ───────────────────────── Admin ─────────────────────────
+  /admin/users:
+    get:
+      tags: [Admin]
+      operationId: listUsers
+      summary: Danh sách người dùng (US24)
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - { name: role, in: query, schema: { $ref: '#/components/schemas/RoleCode' } }
+        - { name: status, in: query, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AdminUser' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createUser
+      summary: Tạo người dùng trước khi họ đăng nhập SSO lần đầu
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: MVP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, fullName, orgUnitCode]
+              properties:
+                email: { type: string, format: email }
+                fullName: { type: string }
+                orgUnitCode: { type: string }
+                roles: { type: array, items: { $ref: '#/components/schemas/RoleAssignment' } }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/{userId}:
+    patch:
+      tags: [Admin]
+      operationId: updateUser
+      summary: Khóa / mở khóa, đổi đơn vị
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/UserId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+                orgUnitCode: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/{userId}/roles:
+    put:
+      tags: [Admin]
+      operationId: setUserRoles
+      summary: Gán toàn bộ vai trò và phạm vi — không gỡ được Admin cuối cùng
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: MVP
+      parameters: [{ $ref: '#/components/parameters/UserId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: array, items: { $ref: '#/components/schemas/RoleAssignment' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Thao tác gỡ PLATFORM_ADMIN cuối cùng
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /admin/org-units:
+    get:
+      tags: [Admin]
+      operationId: listOrgUnits
+      summary: Cây đơn vị
+      x-roles: [ANY]
+      x-scope: MVP
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/OrgUnit' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/policies:
+    get:
+      tags: [Admin]
+      operationId: listPolicies
+      summary: Chính sách phân quyền dòng/cột (US33)
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Policy' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createPolicy
+      summary: Tạo chính sách (phiên bản 1)
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [name, datasetId, roleCode]
+                  properties:
+                    name: { type: string }
+                    datasetId: { type: integer, format: int64 }
+                    roleCode: { $ref: '#/components/schemas/RoleCode' }
+                - $ref: '#/components/schemas/PolicyRules'
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Policy' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /admin/policies/{policyId}/versions:
+    get:
+      tags: [Admin]
+      operationId: listPolicyVersions
+      summary: Lịch sử phiên bản chính sách
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/PolicyId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PolicyVersion' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Admin]
+      operationId: createPolicyVersion
+      summary: Lưu phiên bản mới (hoặc khôi phục bằng cách gửi lại nội dung phiên bản cũ) — BR19
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      parameters: [{ $ref: '#/components/parameters/PolicyId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/PolicyRules'
+                - type: object
+                  properties:
+                    changeNote: { type: string }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PolicyVersion' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /admin/policies/simulate:
+    post:
+      tags: [Admin]
+      operationId: simulatePolicy
+      summary: Mô phỏng "Xem như người dùng X" trước khi lưu (AC33)
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [datasetId, asUserId]
+                  properties:
+                    datasetId: { type: integer, format: int64 }
+                    asUserId: { type: string, format: uuid }
+                - $ref: '#/components/schemas/PolicyRules'
+      responses:
+        '200':
+          description: Dữ liệu mẫu sau khi áp chính sách (giá trị RESTRICTED luôn che)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TabularResult'
+                  - type: object
+                    properties:
+                      visibleRowCount: { type: integer }
+                      totalRowCount: { type: integer }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      operationId: listAuditLogs
+      summary: Nhật ký kiểm toán chỉ đọc (US25)
+      x-roles: [PLATFORM_ADMIN, DATA_STEWARD]
+      x-scope: MVP
+      parameters:
+        - { name: actorId, in: query, schema: { type: string, format: uuid } }
+        - { name: action, in: query, schema: { type: string }, example: PROFILE_VIEW }
+        - { name: objectType, in: query, schema: { type: string } }
+        - { name: objectId, in: query, schema: { type: string } }
+        - { name: outcome, in: query, schema: { type: string, enum: [ALLOW, DENY] } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/assistant-logs:
+    get:
+      tags: [Admin]
+      operationId: listAssistantLogs
+      summary: Nhật ký hỏi-đáp (US40)
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AssistantStatus' } }
+        - { name: userId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/AssistantMessage'
+                            - type: object
+                              properties:
+                                question: { type: string }
+                                user: { $ref: '#/components/schemas/UserRef' }
+                                compiledSql: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/blocked-topics:
+    get:
+      tags: [Admin]
+      operationId: listBlockedTopics
+      summary: Chủ đề bị chặn
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/BlockedTopic' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createBlockedTopic
+      summary: Thêm chủ đề bị chặn
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pattern]
+              properties:
+                pattern: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BlockedTopic' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /admin/blocked-topics/{topicId}:
+    delete:
+      tags: [Admin]
+      operationId: deleteBlockedTopic
+      summary: Xóa chủ đề bị chặn
+      x-roles: [PLATFORM_ADMIN]
+      x-scope: ADV
+      parameters:
+        - { name: topicId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '204': { description: Đã xóa }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token OIDC do Keycloak (SSO trường) cấp
+
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    Q: { name: q, in: query, description: Từ khóa (không phân biệt dấu), schema: { type: string } }
+    PersonId: { name: personId, in: path, required: true, schema: { type: string, format: uuid } }
+    SourceId: { name: sourceId, in: path, required: true, schema: { type: integer, format: int64 } }
+    RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    DatasetId: { name: datasetId, in: path, required: true, schema: { type: integer, format: int64 } }
+    RuleId: { name: ruleId, in: path, required: true, schema: { type: integer, format: int64 } }
+    IssueId: { name: issueId, in: path, required: true, schema: { type: integer, format: int64 } }
+    RequestId: { name: requestId, in: path, required: true, schema: { type: integer, format: int64 } }
+    DashboardId: { name: dashboardId, in: path, required: true, schema: { type: integer, format: int64 } }
+    MetricCode: { name: metricCode, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9_]*$' } }
+    SubscriptionId: { name: subscriptionId, in: path, required: true, schema: { type: integer, format: int64 } }
+    AlertId: { name: alertId, in: path, required: true, schema: { type: integer, format: int64 } }
+    ConversationId: { name: conversationId, in: path, required: true, schema: { type: string, format: uuid } }
+    UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+    PolicyId: { name: policyId, in: path, required: true, schema: { type: integer, format: int64 } }
+
+  responses:
+    BadRequest:
+      description: Tham số không hợp lệ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Chưa đăng nhập hoặc token hết hạn
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Vai trò không được phép thực hiện thao tác
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Không tìm thấy hoặc nằm ngoài phạm vi quyền (không phân biệt — AC11)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Xung đột trạng thái
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Dữ liệu vi phạm quy tắc nghiệp vụ
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Vượt giới hạn tần suất
+      headers:
+        Retry-After: { schema: { type: integer }, description: Số giây chờ }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    # ── Chung ──
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        traceId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+        requestable:
+          type: object
+          description: Có khi người dùng có thể gửi yêu cầu quyền cho tài nguyên bị chặn
+          properties:
+            resourceType: { $ref: '#/components/schemas/ResourceType' }
+            resourceId: { type: string }
+    PageMeta:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    UserRef:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+    OrgUnitRef:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+    Freshness:
+      type: object
+      properties:
+        sources: { type: array, items: { type: string }, example: [SIS, LMS] }
+        updatedAt: { type: string, format: date-time }
+        stale: { type: boolean, description: Vượt SLA độ mới (BR15) }
+        dqScore: { type: number, nullable: true }
+
+    # ── Enum ──
+    RoleCode: { type: string, enum: [PLATFORM_ADMIN, DATA_ENGINEER, DATA_STEWARD, BI_ANALYST, REPORT_VIEWER] }
+    SubjectType: { type: string, enum: [STUDENT, LECTURER, STAFF] }
+    Sensitivity: { type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED] }
+    SourceType: { type: string, enum: [FILE, JDBC, API] }
+    SourceStatus: { type: string, enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED] }
+    RunStatus: { type: string, enum: [QUEUED, RUNNING, SUCCEEDED, PARTIAL, FAILED] }
+    DataLayer: { type: string, enum: [BRONZE, SILVER, GOLD, QUARANTINE] }
+    DqDimension: { type: string, enum: [COMPLETENESS, UNIQUENESS, VALIDITY, CONSISTENCY, TIMELINESS] }
+    DqRuleStatus: { type: string, enum: [DRAFT, ACTIVE, DISABLED] }
+    DqIssueStatus: { type: string, enum: [OPEN, IN_PROGRESS, RESOLVED, WONT_FIX] }
+    MatchStatus: { type: string, enum: [PENDING, AUTO_MERGED, MERGED, REJECTED, UNMERGED] }
+    ResourceType: { type: string, enum: [DATASET, DASHBOARD, PROFILE_FACET, METRIC] }
+    AccessRequestStatus: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED, REVOKED] }
+    DashboardTopic: { type: string, enum: [TRAINING, HR, RESEARCH, FINANCE, DATA_QUALITY] }
+    MetricStatus: { type: string, enum: [DRAFT, CERTIFIED, DEPRECATED] }
+    DetectorKind: { type: string, enum: [VOLUME, FRESHNESS, METRIC_DRIFT] }
+    AlertSeverity: { type: string, enum: [LOW, MEDIUM, HIGH] }
+    AlertStatus: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED, DISMISSED] }
+    LineageNodeType: { type: string, enum: [SOURCE, DATASET, COLUMN, METRIC, DASHBOARD] }
+    AssistantStatus: { type: string, enum: [ANSWERED, CLARIFYING, REFUSED, FAILED] }
+    FacetCode:
+      type: string
+      enum: [OVERVIEW, ACADEMIC, FINANCE, CONDUCT, ACTIVITY, OUTCOME, TEACHING, RESEARCH, EVALUATION, HR, DEVELOPMENT, RECOGNITION]
+
+    # ── Me ──
+    RoleAssignment:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: '#/components/schemas/RoleCode' }
+        scopeOrgUnit: { type: string, nullable: true, description: Mã đơn vị; null = toàn trường }
+    Me:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        orgUnit: { $ref: '#/components/schemas/OrgUnitRef' }
+        roles: { type: array, items: { $ref: '#/components/schemas/RoleAssignment' } }
+    HomeSummary:
+      type: object
+      properties:
+        favoriteDashboards: { type: array, items: { $ref: '#/components/schemas/DashboardSummary' } }
+        dataHealth:
+          type: object
+          properties:
+            dqScore: { type: number }
+            staleDatasets: { type: integer }
+            openAlerts: { type: integer }
+        failedRuns: { type: array, items: { $ref: '#/components/schemas/PipelineRun' } }
+        openIssues: { type: integer }
+        pendingMatches: { type: integer }
+        pendingAccessReviews: { type: integer }
+        recent:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [PROFILE, DASHBOARD, DATASET] }
+              id: { type: string }
+              title: { type: string }
+              viewedAt: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        type: { type: string, example: ACCESS_APPROVED }
+        title: { type: string }
+        link: { type: string, nullable: true }
+        readAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    # ── Profiles ──
+    ProfileSummary:
+      type: object
+      properties:
+        personId: { type: string, format: uuid }
+        fullName: { type: string }
+        code: { type: string, description: Mã SV/mã CB }
+        roles: { type: array, items: { $ref: '#/components/schemas/SubjectType' } }
+        orgUnit: { $ref: '#/components/schemas/OrgUnitRef' }
+        status: { type: string }
+        completeness: { type: number, minimum: 0, maximum: 1 }
+    MaskableValue:
+      type: object
+      description: Giá trị có thể bị che theo quyền
+      properties:
+        value: { description: Giá trị thật hoặc dạng che (VD `0********234`) }
+        masked: { type: boolean }
+        sensitivity: { $ref: '#/components/schemas/Sensitivity' }
+        source: { type: string, nullable: true, example: SIS }
+    Profile360:
+      type: object
+      properties:
+        personId: { type: string, format: uuid }
+        activeRole: { $ref: '#/components/schemas/SubjectType' }
+        availableRoles: { type: array, items: { $ref: '#/components/schemas/SubjectType' } }
+        header:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/MaskableValue' }
+          example:
+            fullName: { value: Nguyễn Văn A, masked: false, sensitivity: INTERNAL, source: SIS }
+            nationalId: { value: 0********234, masked: true, sensitivity: RESTRICTED, source: SIS }
+        kpis:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string, example: gpa_cumulative }
+              label: { type: string }
+              value: { $ref: '#/components/schemas/MaskableValue' }
+        facets:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { $ref: '#/components/schemas/FacetCode' }
+              label: { type: string }
+              allowed: { type: boolean }
+              freshness: { $ref: '#/components/schemas/Freshness' }
+    FacetData:
+      type: object
+      properties:
+        facet: { $ref: '#/components/schemas/FacetCode' }
+        freshness: { $ref: '#/components/schemas/Freshness' }
+        fields:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/MaskableValue' }
+        tables:
+          type: array
+          items:
+            allOf:
+              - type: object
+                properties:
+                  code: { type: string, example: enrollments }
+                  title: { type: string }
+              - $ref: '#/components/schemas/TabularResult'
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string, example: gpa_by_term }
+              points:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    x: { type: string }
+                    y: { type: number, nullable: true }
+    TimelineEvent:
+      type: object
+      properties:
+        eventId: { type: string }
+        time: { type: string, format: date-time }
+        type: { type: string, example: ENROLL }
+        facet: { $ref: '#/components/schemas/FacetCode' }
+        source: { type: string }
+        title: { type: string }
+    AttributeProvenance:
+      type: object
+      properties:
+        attribute: { type: string }
+        value: { $ref: '#/components/schemas/MaskableValue' }
+        winningSource: { type: string }
+        sourceUpdatedAt: { type: string, format: date-time }
+        survivorshipRule: { type: string, example: 'Ưu tiên SIS cho thông tin học vụ' }
+        candidates:
+          type: array
+          description: Chỉ trả khi người xem đủ quyền với mức nhạy cảm của thuộc tính
+          items:
+            type: object
+            properties:
+              source: { type: string }
+              value: {}
+              updatedAt: { type: string, format: date-time }
+
+    # ── Sources & runs ──
+    DataSourceInput:
+      type: object
+      required: [code, name, type, businessOwner, purpose, legalBasisRef, sensitivity, subjectTypes]
+      properties:
+        code: { type: string, pattern: '^SRC-[A-Z0-9]{2,20}$' }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/SourceType' }
+        businessOwner: { type: string }
+        purpose: { type: string, minLength: 10 }
+        legalBasisRef: { type: string, minLength: 3 }
+        legalDocUri: { type: string, format: uri }
+        sensitivity: { $ref: '#/components/schemas/Sensitivity' }
+        subjectTypes: { type: array, minItems: 1, items: { $ref: '#/components/schemas/SubjectType' } }
+        connectionConfig: { type: object, additionalProperties: true, description: Không chứa bí mật }
+        fileTemplate:
+          type: object
+          properties:
+            requiredColumns: { type: array, items: { type: string } }
+    DataSourcePatch:
+      type: object
+      properties:
+        name: { type: string }
+        businessOwner: { type: string }
+        purpose: { type: string, minLength: 10 }
+        legalBasisRef: { type: string }
+        sensitivity: { $ref: '#/components/schemas/Sensitivity' }
+        connectionConfig: { type: object, additionalProperties: true }
+        fileTemplate: { type: object, additionalProperties: true }
+        status: { $ref: '#/components/schemas/SourceStatus' }
+    DataSource:
+      allOf:
+        - $ref: '#/components/schemas/DataSourceInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            status: { $ref: '#/components/schemas/SourceStatus' }
+            owner: { $ref: '#/components/schemas/UserRef' }
+            hasSecret: { type: boolean }
+            schedule: { $ref: '#/components/schemas/Schedule' }
+            lastRun: { $ref: '#/components/schemas/PipelineRun' }
+    ConnectionTestResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        latencyMs: { type: integer }
+        message: { type: string }
+        discoveredTables: { type: array, items: { type: string } }
+    UploadResult:
+      type: object
+      properties:
+        uploadId: { type: string, format: uuid }
+        fileName: { type: string }
+        rowCount: { type: integer }
+        checksumSha256: { type: string }
+        duplicateOfBatchId: { type: integer, format: int64, nullable: true, description: Có giá trị khi file trùng checksum (AC05) }
+        preview: { $ref: '#/components/schemas/TabularResult' }
+    Schedule:
+      type: object
+      required: [cron]
+      properties:
+        cron: { type: string, example: '0 2 * * *' }
+        paused: { type: boolean, default: false }
+    MappingRule:
+      type: object
+      required: [targetColumn]
+      properties:
+        sourceColumn: { type: string, nullable: true }
+        targetColumn: { type: string }
+        transform: { type: string, nullable: true, example: "to_date(ngay_sinh, 'dd/MM/yyyy')" }
+    SchemaMappingInput:
+      type: object
+      required: [targetDatasetId, rules]
+      properties:
+        targetDatasetId: { type: integer, format: int64 }
+        rules: { type: array, items: { $ref: '#/components/schemas/MappingRule' } }
+    SchemaMapping:
+      allOf:
+        - $ref: '#/components/schemas/SchemaMappingInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            version: { type: integer }
+            active: { type: boolean }
+            createdBy: { $ref: '#/components/schemas/UserRef' }
+            createdAt: { type: string, format: date-time }
+    MappingPreview:
+      type: object
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              targetColumn: { type: string }
+              message: { type: string, example: Thiếu ánh xạ cho trường bắt buộc }
+        preview: { $ref: '#/components/schemas/TabularResult' }
+        impacted: { type: array, items: { $ref: '#/components/schemas/LineageNode' }, description: '[ADV] Thành phần phía sau bị ảnh hưởng' }
+    PipelineRun:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sourceId: { type: integer, format: int64 }
+        sourceCode: { type: string }
+        trigger: { type: string, enum: [MANUAL, SCHEDULE, RERUN, REPROCESS] }
+        status: { $ref: '#/components/schemas/RunStatus' }
+        rowsRead: { type: integer }
+        rowsWritten: { type: integer }
+        rowsQuarantined: { type: integer }
+        queuedAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time, nullable: true }
+        finishedAt: { type: string, format: date-time, nullable: true }
+    PipelineRunDetail:
+      allOf:
+        - $ref: '#/components/schemas/PipelineRun'
+        - type: object
+          properties:
+            steps:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string, enum: [BRONZE, DQ, SILVER, GOLD] }
+                  status: { $ref: '#/components/schemas/RunStatus' }
+                  startedAt: { type: string, format: date-time }
+                  finishedAt: { type: string, format: date-time }
+            dqResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  ruleId: { type: integer, format: int64 }
+                  description: { type: string }
+                  severity: { type: string, enum: [BLOCKING, WARNING] }
+                  evaluated: { type: integer }
+                  failed: { type: integer }
+                  status: { type: string, enum: [PASS, FAIL, ERROR] }
+            errorMessage: { type: string, nullable: true }
+
+    # ── Catalog ──
+    Dataset:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        layer: { $ref: '#/components/schemas/DataLayer' }
+        schemaName: { type: string }
+        tableName: { type: string }
+        displayName: { type: string }
+        description: { type: string }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        steward: { $ref: '#/components/schemas/UserRef' }
+        tags: { type: array, items: { type: string } }
+        freshness: { $ref: '#/components/schemas/Freshness' }
+        accessible: { type: boolean, description: Người gọi đã có quyền đọc dữ liệu }
+    DatasetColumn:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        dataType: { type: string }
+        description: { type: string }
+        sensitivity: { $ref: '#/components/schemas/Sensitivity' }
+        glossaryTerm: { $ref: '#/components/schemas/GlossaryTerm' }
+    DatasetDetail:
+      allOf:
+        - $ref: '#/components/schemas/Dataset'
+        - type: object
+          properties:
+            columns: { type: array, items: { $ref: '#/components/schemas/DatasetColumn' } }
+            rowCount: { type: integer, format: int64 }
+            freshnessSlaMinutes: { type: integer }
+            usedBy:
+              type: object
+              properties:
+                dashboards: { type: array, items: { $ref: '#/components/schemas/DashboardSummary' } }
+                metrics: { type: array, items: { type: string } }
+    TabularResult:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              type: { type: string }
+              masked: { type: boolean }
+        rows: { type: array, items: { type: array, items: {} } }
+    GlossaryTermInput:
+      type: object
+      required: [name, definition]
+      properties:
+        name: { type: string }
+        definition: { type: string }
+    GlossaryTerm:
+      allOf:
+        - $ref: '#/components/schemas/GlossaryTermInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            owner: { $ref: '#/components/schemas/UserRef' }
+
+    # ── Data quality ──
+    DqRuleInput:
+      type: object
+      required: [datasetId, ruleType, dimension, severity, description]
+      properties:
+        datasetId: { type: integer, format: int64 }
+        columnId: { type: integer, format: int64, nullable: true }
+        ruleType: { type: string, enum: [NOT_NULL, UNIQUE, RANGE, REGEX, REFERENCE, FRESHNESS, CUSTOM_SQL] }
+        dimension: { $ref: '#/components/schemas/DqDimension' }
+        severity: { type: string, enum: [BLOCKING, WARNING] }
+        params: { type: object, additionalProperties: true }
+        description: { type: string }
+    DqRule:
+      allOf:
+        - $ref: '#/components/schemas/DqRuleInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            status: { $ref: '#/components/schemas/DqRuleStatus' }
+            version: { type: integer }
+            lastPassRate: { type: number, nullable: true }
+            lastDryRunVersion: { type: integer, nullable: true }
+    DryRunResult:
+      type: object
+      properties:
+        evaluated: { type: integer }
+        failed: { type: integer }
+        sample: { $ref: '#/components/schemas/TabularResult' }
+    DqScoreBoard:
+      type: object
+      properties:
+        overall: { type: number }
+        byDimension:
+          type: object
+          additionalProperties: { type: number }
+          example: { COMPLETENESS: 98.2, UNIQUENESS: 99.9, VALIDITY: 96.4, CONSISTENCY: 97.0, TIMELINESS: 92.5 }
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string, description: Dataset hoặc nguồn }
+              score: { type: number }
+              byDimension: { type: object, additionalProperties: { type: number } }
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              score: { type: number }
+    DqIssue:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        rule: { $ref: '#/components/schemas/DqRule' }
+        datasetId: { type: integer, format: int64 }
+        affectedRows: { type: integer, format: int64 }
+        severity: { type: string, enum: [BLOCKING, WARNING] }
+        status: { $ref: '#/components/schemas/DqIssueStatus' }
+        assignee: { $ref: '#/components/schemas/UserRef' }
+        lastRunId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        comments: { type: array, items: { $ref: '#/components/schemas/Comment' } }
+    Comment:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        author: { $ref: '#/components/schemas/UserRef' }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    # ── Identity ──
+    MatchRecord:
+      type: object
+      properties:
+        sourceCode: { type: string }
+        sourceKey: { type: string }
+        personId: { type: string, format: uuid }
+        fields: { type: object, additionalProperties: { $ref: '#/components/schemas/MaskableValue' } }
+    MatchCandidate:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        score: { type: number }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        left: { $ref: '#/components/schemas/MatchRecord' }
+        right: { $ref: '#/components/schemas/MatchRecord' }
+        comparison:
+          type: object
+          description: Kết quả so khớp từng trường
+          additionalProperties: { type: string, enum: [MATCH, PARTIAL, DIFFERENT, MISSING] }
+        createdAt: { type: string, format: date-time }
+    MergeEvent:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        action: { type: string, enum: [MERGE, UNMERGE] }
+        survivorPersonId: { type: string, format: uuid }
+        mergedPersonId: { type: string, format: uuid }
+        actor: { $ref: '#/components/schemas/UserRef' }
+        automatic: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    # ── Access ──
+    AccessRequestInput:
+      type: object
+      required: [resourceType, resourceId, purpose, requestedDays]
+      properties:
+        resourceType: { $ref: '#/components/schemas/ResourceType' }
+        resourceId: { type: string }
+        accessLevel: { type: string, enum: [READ, EXPORT], default: READ }
+        purpose: { type: string, minLength: 10 }
+        scope: { type: object, additionalProperties: true }
+        requestedDays: { type: integer, minimum: 1, maximum: 180 }
+    AccessRequest:
+      allOf:
+        - $ref: '#/components/schemas/AccessRequestInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            resourceName: { type: string }
+            requester: { $ref: '#/components/schemas/UserRef' }
+            status: { $ref: '#/components/schemas/AccessRequestStatus' }
+            reviewer: { $ref: '#/components/schemas/UserRef' }
+            reviewNote: { type: string, nullable: true }
+            createdAt: { type: string, format: date-time }
+            decidedAt: { type: string, format: date-time, nullable: true }
+            expiresAt: { type: string, format: date-time, nullable: true }
+    AccessGrant:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        resourceType: { $ref: '#/components/schemas/ResourceType' }
+        resourceId: { type: string }
+        resourceName: { type: string }
+        accessLevel: { type: string, enum: [READ, EXPORT] }
+        validFrom: { type: string, format: date-time }
+        validTo: { type: string, format: date-time }
+        grantedBy: { $ref: '#/components/schemas/UserRef' }
+
+    # ── Dashboards & semantic ──
+    Filter:
+      type: object
+      required: [dimension, op]
+      properties:
+        dimension: { type: string }
+        op: { type: string, enum: [eq, neq, in, between, gte, lte] }
+        value: {}
+        values: { type: array, items: {} }
+    FilterList:
+      type: array
+      items: { $ref: '#/components/schemas/Filter' }
+    SemanticQuery:
+      type: object
+      required: [metrics]
+      properties:
+        metrics: { type: array, minItems: 1, items: { type: string } }
+        dimensions: { type: array, items: { type: string } }
+        filters: { $ref: '#/components/schemas/FilterList' }
+        orderBy:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              direction: { type: string, enum: [asc, desc] }
+        limit: { type: integer, minimum: 1, maximum: 5000, default: 500 }
+    QueryResult:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              kind: { type: string, enum: [DIMENSION, METRIC] }
+              unit: { type: string, nullable: true }
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              description: 'Giá trị; ô bị ẩn do nhóm < 5 trả object {"suppressed": true}'
+        dataAsOf: { type: string, format: date-time }
+        stale: { type: boolean }
+        suppressedCells: { type: integer }
+    Widget:
+      type: object
+      required: [type, title, querySpec, position]
+      properties:
+        id: { type: integer, format: int64 }
+        type: { type: string, enum: [KPI, BAR, LINE, PIE, HEATMAP, TABLE] }
+        title: { type: string }
+        querySpec:
+          allOf:
+            - $ref: '#/components/schemas/SemanticQuery'
+            - type: object
+              properties:
+                drillPath: { type: array, items: { type: string }, example: [faculty, program, class] }
+        position:
+          type: object
+          properties:
+            x: { type: integer }
+            y: { type: integer }
+            w: { type: integer }
+            h: { type: integer }
+    DashboardInput:
+      type: object
+      required: [title, topic]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        topic: { $ref: '#/components/schemas/DashboardTopic' }
+        globalFilters: { type: array, items: { type: string }, description: Mã dimension làm bộ lọc toàn cục }
+        widgets: { type: array, items: { $ref: '#/components/schemas/Widget' } }
+    DashboardSummary:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        description: { type: string }
+        topic: { $ref: '#/components/schemas/DashboardTopic' }
+        status: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+        owner: { $ref: '#/components/schemas/UserRef' }
+        favorite: { type: boolean }
+        freshness: { $ref: '#/components/schemas/Freshness' }
+    Dashboard:
+      allOf:
+        - $ref: '#/components/schemas/DashboardSummary'
+        - $ref: '#/components/schemas/DashboardInput'
+        - type: object
+          properties:
+            version: { type: integer }
+            shares: { type: array, items: { $ref: '#/components/schemas/Share' } }
+            canEdit: { type: boolean }
+    Share:
+      type: object
+      required: [principalType, principalId]
+      properties:
+        principalType: { type: string, enum: [ROLE, ORG_UNIT, USER] }
+        principalId: { type: string }
+    ExportJob:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING, READY, FAILED] }
+        format: { type: string, enum: [PDF, CSV] }
+        downloadUrl: { type: string, format: uri, nullable: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        watermark: { type: string, example: 'lan.nt@uni.edu.vn · 2026-11-01 09:30' }
+        excludedColumns: { type: array, items: { type: string }, description: Cột RESTRICTED bị loại (BR13) }
+    MetricInput:
+      type: object
+      required: [code, name, definition, expression, baseDatasetId]
+      properties:
+        code: { type: string, pattern: '^[a-z][a-z0-9_]*$' }
+        name: { type: string }
+        definition: { type: string }
+        expression: { type: string, example: 'sum(n_academic_warning) * 1.0 / nullif(sum(n_students), 0)' }
+        baseDatasetId: { type: integer, format: int64 }
+        allowedDimensions: { type: array, items: { type: string } }
+        unit: { type: string, example: '%' }
+        glossaryTermId: { type: integer, format: int64, nullable: true }
+    Metric:
+      allOf:
+        - $ref: '#/components/schemas/MetricInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            status: { $ref: '#/components/schemas/MetricStatus' }
+            version: { type: integer }
+            owner: { $ref: '#/components/schemas/UserRef' }
+            certifiedBy: { $ref: '#/components/schemas/UserRef' }
+            certifiedAt: { type: string, format: date-time, nullable: true }
+    MetricDetail:
+      allOf:
+        - $ref: '#/components/schemas/Metric'
+        - type: object
+          properties:
+            versions:
+              type: array
+              items:
+                type: object
+                properties:
+                  version: { type: integer }
+                  expression: { type: string }
+                  changedBy: { $ref: '#/components/schemas/UserRef' }
+                  changedAt: { type: string, format: date-time }
+            usedByDashboards: { type: integer }
+    Dimension:
+      type: object
+      properties:
+        code: { type: string, example: faculty }
+        name: { type: string }
+        description: { type: string }
+
+    # ── Reports, alerts, lineage ──
+    SubscriptionInput:
+      type: object
+      required: [dashboardId, cron]
+      properties:
+        dashboardId: { type: integer, format: int64 }
+        cron: { type: string, example: '0 7 * * MON' }
+        format: { type: string, enum: [PDF, LINK], default: PDF }
+        filters: { $ref: '#/components/schemas/FilterList' }
+        includeAiSummary: { type: boolean, default: true }
+        recipientIds: { type: array, items: { type: string, format: uuid }, description: Chỉ người dùng nội bộ }
+        status: { type: string, enum: [ACTIVE, PAUSED] }
+    Subscription:
+      allOf:
+        - $ref: '#/components/schemas/SubscriptionInput'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            nextRunAt: { type: string, format: date-time, nullable: true }
+            lastDelivery: { $ref: '#/components/schemas/Delivery' }
+    Delivery:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        recipient: { $ref: '#/components/schemas/UserRef' }
+        status: { type: string, enum: [SENT, SKIPPED_NO_ACCESS, FAILED] }
+        aiSummary: { type: string, nullable: true }
+        artifactUrl: { type: string, format: uri, nullable: true }
+        sentAt: { type: string, format: date-time }
+    Alert:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { $ref: '#/components/schemas/DetectorKind' }
+        target:
+          type: object
+          properties:
+            type: { type: string, enum: [DATASET, METRIC] }
+            id: { type: string }
+            name: { type: string }
+        observedValue: { type: number }
+        expectedLow: { type: number, nullable: true }
+        expectedHigh: { type: number, nullable: true }
+        severity: { $ref: '#/components/schemas/AlertSeverity' }
+        status: { $ref: '#/components/schemas/AlertStatus' }
+        detectedAt: { type: string, format: date-time }
+        acknowledgedBy: { $ref: '#/components/schemas/UserRef' }
+        note: { type: string, nullable: true }
+    AlertDetail:
+      allOf:
+        - $ref: '#/components/schemas/Alert'
+        - type: object
+          properties:
+            series:
+              type: array
+              items:
+                type: object
+                properties:
+                  at: { type: string, format: date-time }
+                  value: { type: number }
+                  low: { type: number, nullable: true }
+                  high: { type: number, nullable: true }
+                  anomalous: { type: boolean }
+            runId: { type: string, format: uuid, nullable: true }
+    LineageNode:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/LineageNodeType' }
+        refId: { type: string }
+        name: { type: string }
+        layer: { $ref: '#/components/schemas/DataLayer' }
+    LineageGraph:
+      type: object
+      properties:
+        center: { $ref: '#/components/schemas/LineageNode' }
+        nodes: { type: array, items: { $ref: '#/components/schemas/LineageNode' } }
+        edges:
+          type: array
+          items:
+            type: object
+            properties:
+              from: { type: integer, format: int64 }
+              to: { type: integer, format: int64 }
+              transformRef: { type: string, nullable: true }
+
+    # ── Assistant ──
+    Conversation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        dashboardId: { type: integer, format: int64, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AskRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 2, maxLength: 1000 }
+        clarification:
+          type: object
+          description: Lựa chọn của người dùng cho câu hỏi làm rõ trước đó
+          additionalProperties: true
+    AssistantMessage:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        role: { type: string, enum: [USER, ASSISTANT] }
+        content: { type: string }
+        status: { $ref: '#/components/schemas/AssistantStatus' }
+        aiGenerated: { type: boolean, description: Luôn true với ASSISTANT — FE gắn nhãn "Do AI tạo" (BR20) }
+        metricCodes: { type: array, items: { type: string } }
+        appliedFilters: { $ref: '#/components/schemas/FilterList' }
+        dataAsOf: { type: string, format: date-time, nullable: true }
+        result: { $ref: '#/components/schemas/QueryResult' }
+        chart:
+          type: object
+          nullable: true
+          properties:
+            type: { type: string, enum: [BAR, LINE, PIE, TABLE] }
+            x: { type: string }
+            y: { type: array, items: { type: string } }
+        semanticQuery: { $ref: '#/components/schemas/SemanticQuery' }
+        sql: { type: string, nullable: true, description: SQL đã chạy — hiển thị ở nút "Xem truy vấn" }
+        refusalReason: { type: string, nullable: true, enum: [OUT_OF_SCOPE, BLOCKED_TOPIC, RESTRICTED_DETAIL, NO_METRIC, null] }
+        clarify:
+          type: object
+          nullable: true
+          properties:
+            question: { type: string }
+            options:
+              type: array
+              items:
+                type: object
+                properties:
+                  label: { type: string }
+                  patch: { type: object, additionalProperties: true }
+        feedback: { type: integer, nullable: true, enum: [-1, 1, null] }
+        createdAt: { type: string, format: date-time }
+
+    # ── Admin ──
+    OrgUnit:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [UNIVERSITY, FACULTY, DEPARTMENT, OFFICE, CENTER] }
+        parentCode: { type: string, nullable: true }
+    AdminUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        orgUnit: { $ref: '#/components/schemas/OrgUnitRef' }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        roles: { type: array, items: { $ref: '#/components/schemas/RoleAssignment' } }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+    ColumnRule:
+      type: object
+      required: [column, action]
+      properties:
+        column: { type: string }
+        action: { type: string, enum: [MASK_PARTIAL, HASH, DENY] }
+    PolicyRules:
+      type: object
+      properties:
+        rowFilter: { type: string, nullable: true, example: "faculty_code = current_user_attr('faculty_code')" }
+        columnRules: { type: array, items: { $ref: '#/components/schemas/ColumnRule' } }
+    Policy:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        datasetId: { type: integer, format: int64 }
+        roleCode: { $ref: '#/components/schemas/RoleCode' }
+        currentVersion: { $ref: '#/components/schemas/PolicyVersion' }
+        active: { type: boolean }
+    PolicyVersion:
+      allOf:
+        - $ref: '#/components/schemas/PolicyRules'
+        - type: object
+          properties:
+            version: { type: integer }
+            changeNote: { type: string, nullable: true }
+            createdBy: { $ref: '#/components/schemas/UserRef' }
+            createdAt: { type: string, format: date-time }
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        occurredAt: { type: string, format: date-time }
+        actor: { $ref: '#/components/schemas/UserRef' }
+        action: { type: string }
+        objectType: { type: string }
+        objectId: { type: string, nullable: true }
+        outcome: { type: string, enum: [ALLOW, DENY] }
+        ip: { type: string }
+        details: { type: object, additionalProperties: true }
+    BlockedTopic:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        pattern: { type: string }
+        description: { type: string, nullable: true }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        createdAt: { type: string, format: date-time }

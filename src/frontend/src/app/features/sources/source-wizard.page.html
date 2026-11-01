@@ -1,0 +1,363 @@
+<div class="page">
+  <aiia-page-header
+    [title]="isNew() ? 'Đăng ký nguồn dữ liệu' : (source()?.name ?? 'Cấu hình nguồn')"
+    [crumbs]="[{ label: 'Nguồn dữ liệu', link: '/sources' }, { label: isNew() ? 'Đăng ký mới' : (source()?.code ?? '…') }]"
+  >
+    @if (source(); as s) {
+      <aiia-status [status]="s.status" />
+    }
+  </aiia-page-header>
+
+  @if (loadError(); as e) {
+    <aiia-state [kind]="e.status === 403 ? 'forbidden' : 'error'" [message]="e.title" [detail]="e.detail" />
+  } @else {
+    <ol class="stepper" aria-label="Các bước">
+      @for (label of steps; track $index) {
+        <li>
+          <button type="button" [class.active]="current() === $index + 1" [class.done]="!isNew() && current() > $index + 1" [disabled]="isNew() && $index > 0" [attr.aria-current]="current() === $index + 1 ? 'step' : null" (click)="goStep($index + 1)">
+            <span class="num">{{ $index + 1 }}</span> {{ label }}
+          </button>
+        </li>
+      }
+    </ol>
+
+    @if (!canEdit) {
+      <div class="banner info small" style="margin-bottom: 12px">Bạn đang xem ở chế độ chỉ đọc. Chỉ Data Engineer được thay đổi cấu hình nguồn.</div>
+    }
+
+    @switch (current()) {
+      @case (1) {
+        <form class="card form-grid" (ngSubmit)="saveInfo()">
+          <label class="field">
+            <span class="small muted">Mã nguồn *</span>
+            <input class="input mono" name="code" [(ngModel)]="form.code" [disabled]="!isNew() || !canEdit" [class.invalid]="fieldErrors()['code']" placeholder="SRC-KTX" />
+            @if (fieldErrors()['code']) { <span class="error">{{ fieldErrors()['code'] }}</span> }
+          </label>
+          <label class="field">
+            <span class="small muted">Tên nguồn *</span>
+            <input class="input" name="name" [(ngModel)]="form.name" [disabled]="!canEdit" [class.invalid]="fieldErrors()['name']" />
+            @if (fieldErrors()['name']) { <span class="error">{{ fieldErrors()['name'] }}</span> }
+          </label>
+          <label class="field">
+            <span class="small muted">Loại *</span>
+            <select class="input" name="type" [(ngModel)]="form.type" [disabled]="!isNew() || !canEdit">
+              <option value="FILE">File CSV/XLSX</option>
+              <option value="JDBC">Cơ sở dữ liệu (JDBC)</option>
+              <option value="API">API</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="small muted">Độ nhạy cao nhất *</span>
+            <select class="input" name="sensitivity" [(ngModel)]="form.sensitivity" [disabled]="!canEdit">
+              <option value="PUBLIC">Công khai</option>
+              <option value="INTERNAL">Nội bộ</option>
+              <option value="CONFIDENTIAL">Mật</option>
+              <option value="RESTRICTED">Hạn chế</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="small muted">Chủ sở hữu nghiệp vụ *</span>
+            <input class="input" name="businessOwner" [(ngModel)]="form.businessOwner" [disabled]="!canEdit" [class.invalid]="fieldErrors()['businessOwner']" placeholder="Phòng Đào tạo" />
+            @if (fieldErrors()['businessOwner']) { <span class="error">{{ fieldErrors()['businessOwner'] }}</span> }
+          </label>
+          <label class="field">
+            <span class="small muted">Căn cứ cho phép *</span>
+            <input class="input" name="legalBasisRef" [(ngModel)]="form.legalBasisRef" [disabled]="!canEdit" [class.invalid]="fieldErrors()['legalBasisRef']" placeholder="QĐ số …/QĐ-ĐH ngày …" />
+            @if (fieldErrors()['legalBasisRef']) { <span class="error">{{ fieldErrors()['legalBasisRef'] }}</span> }
+          </label>
+          <label class="field full">
+            <span class="small muted">Mục đích sử dụng * (tối thiểu 10 ký tự)</span>
+            <textarea class="input" name="purpose" [(ngModel)]="form.purpose" [disabled]="!canEdit" [class.invalid]="fieldErrors()['purpose']"></textarea>
+            @if (fieldErrors()['purpose']) { <span class="error">{{ fieldErrors()['purpose'] }}</span> }
+          </label>
+          <fieldset class="field full">
+            <legend class="small muted">Đối tượng dữ liệu *</legend>
+            <div class="row">
+              @for (s of subjects; track s[0]) {
+                <label class="row small"><input type="checkbox" [name]="'subj-' + s[0]" [ngModel]="form.subjectTypes.includes(s[0])" (ngModelChange)="toggleSubject(s[0], $event)" [disabled]="!isNew() || !canEdit" /> {{ s[1] }}</label>
+              }
+            </div>
+            @if (fieldErrors()['subjectTypes']) { <span class="error">{{ fieldErrors()['subjectTypes'] }}</span> }
+          </fieldset>
+          @if (form.type === 'FILE') {
+            <label class="field full">
+              <span class="small muted">Cột bắt buộc của template file *</span>
+              <input class="input mono" name="requiredColumns" [(ngModel)]="requiredColumnsText" [disabled]="!canEdit" [class.invalid]="fieldErrors()['fileTemplate']" placeholder="ma_sv, hoc_ky, so_tien_phai_nop" />
+              <span class="hint">Phân tách bằng dấu phẩy. File upload thiếu cột sẽ bị từ chối.</span>
+              @if (fieldErrors()['fileTemplate']) { <span class="error">{{ fieldErrors()['fileTemplate'] }}</span> }
+            </label>
+          }
+          @if (formError()) {
+            <div class="banner danger small full" role="alert">{{ formError() }}</div>
+          }
+          @if (canEdit) {
+            <div class="full row">
+              <span class="spacer"></span>
+              <a class="btn" routerLink="/sources">Hủy</a>
+              <button type="submit" class="btn primary" [disabled]="saving()">{{ isNew() ? 'Tạo nguồn (Nháp)' : 'Lưu & tiếp tục' }}</button>
+            </div>
+          }
+        </form>
+      }
+
+      @case (2) {
+        @if (source(); as s) {
+          @if (s.type === 'FILE') {
+            <section class="card stack">
+              <h2 class="card-title">Tải file lên</h2>
+              <p class="small muted" style="margin: 0">
+                CSV hoặc XLSX, tối đa 50 MB. Cột bắt buộc: <span class="mono">{{ sourceColumns().join(', ') || '—' }}</span>
+              </p>
+              @if (canEdit) {
+                <label class="dropzone" [class.over]="dragOver()" (dragover)="$event.preventDefault(); dragOver.set(true)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+                  <input type="file" accept=".csv,.xlsx" class="sr-only" (change)="onPick($event)" />
+                  <strong>Kéo thả file vào đây</strong>
+                  <span class="small muted">hoặc bấm để chọn file</span>
+                </label>
+              }
+              @if (saving()) {
+                <aiia-state kind="loading" message="Đang kiểm tra file…" />
+              }
+              @if (uploadError(); as e) {
+                <div class="banner danger small" role="alert">
+                  <div>
+                    <strong>{{ e.title }}</strong> {{ e.detail }}
+                    @if (e.errors?.length) {
+                      <ul>
+                        @for (x of e.errors; track $index) {
+                          <li><span class="mono">{{ x.field }}</span>: {{ x.message }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </div>
+              }
+              @if (upload(); as u) {
+                <div class="row">
+                  <span class="chip ok">✓ {{ u.fileName }}</span>
+                  <span class="small">{{ u.rowCount }} dòng</span>
+                  <span class="small muted mono" title="SHA-256">{{ (u.checksumSha256 ?? '').slice(0, 16) }}…</span>
+                </div>
+                @if (u.duplicateOfBatchId) {
+                  <div class="banner warn small">File giống hệt lô #{{ u.duplicateOfBatchId }} đã ingest trước đó (trùng checksum).</div>
+                }
+                <aiia-table [data]="u.preview" caption="Xem trước 20 dòng đầu" maxHeight="320px" />
+                @if (canEdit) {
+                  <div class="row">
+                    <span class="spacer"></span>
+                    @if (s.status !== 'ACTIVE') {
+                      <span class="small muted">Nguồn cần ở trạng thái Hoạt động để ingest (bước 4).</span>
+                    }
+                    <button type="button" class="btn primary" [disabled]="s.status !== 'ACTIVE' || saving()" (click)="ingestUpload()">Ingest file này</button>
+                  </div>
+                }
+              }
+            </section>
+          } @else {
+            <section class="card stack">
+              <h2 class="card-title">Kết nối {{ s.type === 'API' ? 'API' : 'cơ sở dữ liệu' }}</h2>
+              <div class="form-grid">
+                @for (k of connectionKeys(); track k) {
+                  <label class="field">
+                    <span class="small muted mono">{{ k }}</span>
+                    <input class="input" [name]="'cfg-' + k" [(ngModel)]="connection[k]" [disabled]="!canEdit" />
+                  </label>
+                }
+                <label class="field">
+                  <span class="small muted">{{ s.type === 'API' ? 'Token' : 'Mật khẩu' }} {{ s.hasSecret ? '(đã lưu — nhập để thay)' : '*' }}</span>
+                  <input class="input" type="password" name="secret" autocomplete="new-password" [(ngModel)]="secret" [disabled]="!canEdit" />
+                  <span class="hint">Lưu vào kho bí mật, không bao giờ hiển thị lại.</span>
+                </label>
+              </div>
+              @if (canEdit) {
+                <div class="row">
+                  <button type="button" class="btn primary" [disabled]="saving()" (click)="testConnection()">Lưu & kiểm tra kết nối</button>
+                </div>
+              }
+              @if (testResult(); as r) {
+                <div class="banner small" [class.ok]="r.ok" [class.danger]="!r.ok" role="status">
+                  <div>
+                    <strong>{{ r.ok ? 'Kết nối thành công' : 'Kết nối thất bại' }}</strong>
+                    @if (r.ok) { · {{ r.latencyMs }} ms } — {{ r.message }}
+                    @if (r.discoveredTables?.length) {
+                      <div class="small">Bảng phát hiện: <span class="mono">{{ r.discoveredTables!.join(', ') }}</span></div>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+          <div class="row nav">
+            <button type="button" class="btn" (click)="goStep(1)">← Quay lại</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn" (click)="goStep(3)">Tiếp: Ánh xạ schema →</button>
+          </div>
+        }
+      }
+
+      @case (3) {
+        @if (source(); as s) {
+          <section class="card stack">
+            <div class="row between">
+              <h2 class="card-title">Ánh xạ cột nguồn → dataset đích</h2>
+              <label class="row small">
+                Dataset đích
+                <select class="input" [ngModel]="targetDatasetId" (ngModelChange)="selectTarget($event)" [disabled]="!canEdit">
+                  <option [ngValue]="0">— chọn —</option>
+                  @for (d of targets(); track d.id) {
+                    <option [ngValue]="d.id">{{ d.schemaName }}.{{ d.tableName }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            @if (rules.length) {
+              <datalist id="src-cols">
+                @for (c of sourceColumns(); track c) {
+                  <option [value]="c"></option>
+                }
+              </datalist>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead><tr><th>Cột đích</th><th>Kiểu</th><th>Cột nguồn</th><th>Biến đổi (tùy chọn)</th></tr></thead>
+                  <tbody>
+                    @for (r of rules; track r.targetColumn; let i = $index) {
+                      <tr [class.err]="ruleError(r.targetColumn)">
+                        <td class="mono">{{ r.targetColumn }}</td>
+                        <td class="small muted">{{ targetColumns()[i]?.dataType }}</td>
+                        <td>
+                          <input class="input mono" list="src-cols" [name]="'src-' + i" [(ngModel)]="r.sourceColumn" [disabled]="!canEdit" [attr.aria-label]="'Cột nguồn cho ' + r.targetColumn" />
+                          @if (ruleError(r.targetColumn)) {
+                            <div class="small error-text">{{ ruleError(r.targetColumn) }}</div>
+                          }
+                        </td>
+                        <td><input class="input mono" [name]="'tf-' + i" [(ngModel)]="r.transform" [disabled]="!canEdit" placeholder="trim(), to_date('dd/MM/yyyy')…" [attr.aria-label]="'Biến đổi cho ' + r.targetColumn" /></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <aiia-state message="Chọn dataset đích để bắt đầu ánh xạ" />
+            }
+            @if (canEdit && rules.length) {
+              <div class="row">
+                <button type="button" class="btn" (click)="previewMapping()">Xem trước</button>
+                <span class="spacer"></span>
+                <button type="button" class="btn primary" [disabled]="saving()" (click)="saveMapping()">Lưu phiên bản mới</button>
+              </div>
+            }
+          </section>
+
+          @if (mappingPreview(); as p) {
+            <section class="card stack">
+              <div class="row">
+                <h2 class="card-title" style="margin: 0">Kết quả xem trước</h2>
+                @if (p.valid) {
+                  <span class="chip ok">Hợp lệ</span>
+                } @else {
+                  <span class="chip danger">{{ p.errors?.length }} lỗi</span>
+                }
+              </div>
+              @if (p.preview) {
+                <aiia-table [data]="p.preview" caption="Dữ liệu sau ánh xạ (5 dòng mẫu, đã che trường nhạy cảm)" />
+              }
+              @if (p.impacted?.length) {
+                <div>
+                  <div class="small muted">Thay đổi này ảnh hưởng tới {{ p.impacted!.length }} đối tượng phía sau:</div>
+                  <div class="row" style="margin-top: 6px">
+                    @for (n of p.impacted; track n.id) {
+                      <a class="chip outline" [routerLink]="['/lineage']" [queryParams]="{ nodeType: n.type, refId: n.refId }">{{ n.type }} · {{ n.name }}</a>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (mappings().length) {
+            <section class="card">
+              <h2 class="card-title">Lịch sử phiên bản mapping</h2>
+              <table class="table">
+                <thead><tr><th>Phiên bản</th><th>Dataset đích</th><th>Người tạo</th><th>Thời điểm</th><th></th></tr></thead>
+                <tbody>
+                  @for (m of mappings(); track m.id) {
+                    <tr>
+                      <td>v{{ m.version }}</td>
+                      <td class="mono">{{ datasetName(m.targetDatasetId) }}</td>
+                      <td>{{ m.createdBy?.fullName }}</td>
+                      <td>{{ m.createdAt | viDate: true }}</td>
+                      <td>@if (m.active) { <span class="chip ok">Đang dùng</span> }</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+          }
+          <div class="row nav">
+            <button type="button" class="btn" (click)="goStep(2)">← Quay lại</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn" (click)="goStep(4)">Tiếp: Lịch & kích hoạt →</button>
+          </div>
+        }
+      }
+
+      @case (4) {
+        @if (source(); as s) {
+          <div class="grid cols-2">
+            <section class="card stack">
+              <h2 class="card-title">Lịch ingest</h2>
+              @if (s.type === 'FILE') {
+                <p class="small muted" style="margin: 0">Nguồn file được ingest mỗi lần tải file lên ở bước 2; lịch là tùy chọn.</p>
+              }
+              <label class="field">
+                <span class="small muted">Biểu thức cron (phút giờ ngày tháng thứ)</span>
+                <input class="input mono" name="cron" [(ngModel)]="cron" [disabled]="!canEdit" />
+              </label>
+              <div class="row">
+                @for (p of cronPresets; track p[0]) {
+                  <button type="button" class="chip selectable" [class.on]="cron === p[0]" [disabled]="!canEdit" (click)="cron = p[0]">{{ p[1] }}</button>
+                }
+              </div>
+              <label class="row small"><input type="checkbox" name="paused" [(ngModel)]="paused" [disabled]="!canEdit" /> Tạm dừng lịch</label>
+              @if (nextRunAt()) {
+                <div class="small">Lần chạy kế tiếp: <strong>{{ nextRunAt() | viDate: true }}</strong></div>
+              }
+              @if (canEdit) {
+                <div class="row"><button type="button" class="btn" (click)="saveSchedule()">Lưu lịch</button></div>
+              }
+            </section>
+            <section class="card stack">
+              <h2 class="card-title">Trạng thái nguồn</h2>
+              <div class="row"><aiia-status [status]="s.status" /> <span class="small muted">Chỉ nguồn Hoạt động mới được ingest (BR01).</span></div>
+              <ul class="checklist small">
+                <li [class.ok]="!!s.purpose && !!s.legalBasisRef">Có mục đích sử dụng và căn cứ cho phép</li>
+                <li [class.ok]="s.type === 'FILE' || !!s.hasSecret">Đã lưu bí mật kết nối</li>
+                <li [class.ok]="mappings().length > 0">Đã có mapping schema</li>
+              </ul>
+              @if (canEdit) {
+                <div class="row">
+                  @if (s.status !== 'ACTIVE') {
+                    <button type="button" class="btn primary" (click)="setStatus('ACTIVE')">Kích hoạt nguồn</button>
+                  } @else {
+                    <button type="button" class="btn" (click)="setStatus('PAUSED')">Tạm dừng</button>
+                    @if (s.type !== 'FILE') {
+                      <button type="button" class="btn primary" [disabled]="saving()" (click)="ingestNow()">Ingest ngay</button>
+                    }
+                  }
+                </div>
+              }
+              @if (s.lastRun; as r) {
+                <div class="small">Lần chạy gần nhất: <a [routerLink]="['/runs', r.id]"><aiia-status [status]="r.status" /></a> · {{ r.queuedAt | viDate: true }}</div>
+              }
+            </section>
+          </div>
+          <div class="row nav">
+            <button type="button" class="btn" (click)="goStep(3)">← Quay lại</button>
+            <span class="spacer"></span>
+            <a class="btn" routerLink="/sources">Về danh sách nguồn</a>
+          </div>
+        }
+      }
+    }
+  }
+</div>

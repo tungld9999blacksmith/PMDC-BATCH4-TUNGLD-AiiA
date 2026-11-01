@@ -1,0 +1,84 @@
+.stepper {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  flex-wrap: wrap;
+}
+.stepper button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.stepper button.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.stepper .num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 12px;
+}
+.stepper button.active .num {
+  background: var(--color-accent);
+  color: #fff;
+}
+.stepper button.done .num {
+  background: var(--color-ok, #2b8a3e);
+  color: #fff;
+}
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px;
+  border: 2px dashed var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.dropzone.over,
+.dropzone:focus-within {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.nav {
+  margin-top: 16px;
+}
+tr.err td {
+  background: #fff5f5;
+}
+.error-text {
+  color: var(--color-danger);
+}
+.checklist {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+.checklist li::before {
+  content: '○ ';
+  color: var(--color-muted);
+}
+.checklist li.ok::before {
+  content: '✓ ';
+  color: var(--color-ok, #2b8a3e);
+}

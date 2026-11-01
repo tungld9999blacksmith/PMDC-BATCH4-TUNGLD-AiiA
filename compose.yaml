@@ -1,0 +1,256 @@
+# AiiA — một Docker Compose cho toàn bộ hạ tầng, chia nhóm bằng profiles.
+# Service không gắn profile (postgres, minio) luôn khởi động. Các nhóm còn lại bật khi cần:
+#   source     : mock-source (API + CSDL giả lập nguồn SIS/HRM/FIN/LMS)
+#   lakehouse  : trino, dagster
+#   app        : api, worker, redis, web
+#   bi         : metabase
+#   obs        : prometheus, loki, promtail, tempo, grafana
+#   cdc        : kafka, debezium
+# Ví dụ: docker compose --profile source --profile lakehouse up -d
+
+name: aiia
+
+services:
+  # ───────────── core: CSDL dùng chung + Lakehouse storage (luôn chạy) ─────────────
+  postgres:
+    # Một instance Postgres 18 phục vụ: control plane (aiia), Iceberg JDBC catalog,
+    # CSDL nguồn giả lập (mock_source), metadata Metabase và Dagster.
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiia_dev_password}
+      POSTGRES_DB: postgres
+    # wal_level=logical để Debezium đọc CDC từ mock_source
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_wal_senders=10", "-c", "max_replication_slots=10"]
+    ports: ["5432:5432"]
+    volumes:
+      - pg_data:/var/lib/postgresql
+      - ./infra/postgres/initdb/01-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
+      - ./infra/postgres/initdb/02-aiia-schema.sh:/docker-entrypoint-initdb.d/02-aiia-schema.sh:ro
+      - ./src/database/aiia.sql:/sql/aiia.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio_data:/data]
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on: [minio]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}; do sleep 2; done;
+      mc mb --ignore-existing local/lakehouse local/landing;
+      echo 'Đã tạo bucket lakehouse và landing';
+      exit 0"
+
+  # ───────────── source: nguồn giả lập (chỉ một server) ─────────────
+  mock-source:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.mock-source
+    profiles: [source]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      MOCK_DATABASE_URL: postgresql://${POSTGRES_USER:-aiia}:${POSTGRES_PASSWORD:-aiia_dev_password}@postgres:5432/mock_source
+      MOCK_SEED: "42"
+      MOCK_STUDENTS: "2000"
+      MOCK_STAFF: "300"
+    ports: ["8100:8000"]
+
+  # ───────────── lakehouse: query engine + orchestration ─────────────
+  trino:
+    image: trinodb/trino:470
+    profiles: [lakehouse]
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiia_dev_password}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports: ["8080:8080"]
+    volumes:
+      - ./infra/trino/catalog:/etc/trino/catalog:ro
+      - ./infra/trino/etc/config.properties:/etc/trino/config.properties:ro
+      - ./infra/trino/etc/jvm.config:/etc/trino/jvm.config:ro
+
+  dagster:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.pipelines
+    profiles: [lakehouse]
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiia_dev_password}
+      MOCK_SOURCE_URL: http://mock-source:8000/api/v1
+      AIIA_LANDING_URL: s3://landing
+      AIIA_WAREHOUSE: s3://lakehouse/warehouse
+      AIIA_ICEBERG_URI: postgresql+psycopg2://${POSTGRES_USER:-aiia}:${POSTGRES_PASSWORD:-aiia_dev_password}@postgres:5432/iceberg_catalog
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+    ports: ["3000:3000"]
+
+  # ───────────── app: API, worker, cache, web ─────────────
+  redis:
+    image: redis:7.4
+    profiles: [app]
+    ports: ["6379:6379"]
+
+  api:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.backend
+    image: aiia-backend:dev
+    profiles: [app]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      AIIA_DATABASE_URL: postgresql://${POSTGRES_USER:-aiia}:${POSTGRES_PASSWORD:-aiia_dev_password}@postgres:5432/aiia
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.backend
+    image: aiia-backend:dev
+    profiles: [app]
+    command: ["celery", "-A", "worker.celery_app", "worker", "-l", "info"]
+    depends_on: [redis]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+
+  web:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.web
+    profiles: [app]
+    depends_on: [api]
+    ports: ["4200:80"]
+
+  # ───────────── bi ─────────────
+  metabase:
+    image: metabase/metabase:${METABASE_VERSION:-v0.55.0}
+    profiles: [bi]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: "5432"
+      MB_DB_HOST: postgres
+      MB_DB_USER: ${POSTGRES_USER:-aiia}
+      MB_DB_PASS: ${POSTGRES_PASSWORD:-aiia_dev_password}
+    ports: ["3001:3000"]
+
+  # ───────────── obs: logs, metrics, traces ─────────────
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [obs]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports: ["9090:9090"]
+
+  loki:
+    image: grafana/loki:3.2.0
+    profiles: [obs]
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./infra/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    ports: ["3100:3100"]
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    profiles: [obs]
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    depends_on: [loki]
+    volumes:
+      - ./infra/promtail/promtail.yaml:/etc/promtail/promtail.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    profiles: [obs]
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports: ["3200:3200", "4317:4317", "4318:4318"]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: [obs]
+    depends_on: [prometheus, loki, tempo]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports: ["3002:3000"]
+
+  # ───────────── cdc: Kafka (KRaft) + Debezium Connect ─────────────
+  kafka:
+    image: apache/kafka:3.9.0
+    profiles: [cdc]
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+    ports: ["9092:9092"]
+
+  debezium:
+    image: quay.io/debezium/connect:3.0
+    profiles: [cdc]
+    depends_on:
+      kafka: { condition: service_started }
+      postgres: { condition: service_healthy }
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: aiia-connect
+      CONFIG_STORAGE_TOPIC: aiia_connect_configs
+      OFFSET_STORAGE_TOPIC: aiia_connect_offsets
+      STATUS_STORAGE_TOPIC: aiia_connect_status
+    ports: ["8083:8083"]
+
+volumes:
+  pg_data:
+  minio_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:

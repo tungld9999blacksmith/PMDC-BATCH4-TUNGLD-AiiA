@@ -1317,7 +1317,7 @@ flowchart TB
         subgraph data["Data"]
             trino["Trino<br/><i>[Container: Query Engine]</i><br/>SQL trên Iceberg, impersonation"]
             lake[("MinIO + Iceberg REST Catalog<br/><i>[Container: Lakehouse]</i><br/>Bronze · Silver · Gold · Quarantine")]
-            pg[("PostgreSQL 16<br/><i>[Container: Control-plane DB]</i><br/>Metadata, quyền, dashboard, audit")]
+            pg[("PostgreSQL 18<br/><i>[Container: Control-plane DB]</i><br/>Metadata, quyền, dashboard, audit")]
             redis[("Redis<br/><i>[Container: Cache/Queue]</i>")]
         end
     end
@@ -2213,8 +2213,9 @@ sequenceDiagram
 
 ## Tài liệu
 
-- **Yêu cầu:** [Phân tích top-down](#1-phân-tích-đề-bài-top-down-research), [User Story INVEST, BR, AC, Use Case](#2-requirements--use-case-user-stories-invest-acceptance-criteria), [Yêu cầu phi chức năng](docs/requirements/non-functional-requirements.md).
-- **UI/UX:** [Kiến trúc thông tin](#3-kiến-trúc-thông-tin-information-architecture), [Thiết kế UI/UX và tương tác](#4-thiết-kế-uiux-và-tương-tác-front-end).
+- **Yêu cầu:** [Phân tích top-down](docs/01-scope.md), [Tính năng và chức năng](docs/02-features.md), [Use case](docs/03-use-cases.md), [Tiêu chí chấp nhận Given–When–Then](docs/06-acceptance-criteria.md), [Ma trận truy vết](docs/07-traceability.md), [Backlog INVEST](docs/08-invest-requirements.md).
+- **Danh mục yêu cầu:** [Quy tắc nghiệp vụ](docs/requirements/business-rules.md), [Yêu cầu phi chức năng](docs/requirements/non-functional-requirements.md).
+- **UI/UX:** [Kiến trúc thông tin và UI/UX](docs/04-information-architecture.md), [Sitemap và Section từng trang](#3-kiến-trúc-thông-tin-information-architecture), [Mẫu tương tác và wireframe](#4-thiết-kế-uiux-và-tương-tác-front-end).
 - **Mind map:**
   - [Product mind map](assets/product-mind-map.png)
   - [Phân rã top-down](assets/mindmaps/problem-decomposition.svg)
@@ -2222,8 +2223,9 @@ sequenceDiagram
   - [Sitemap](<assets/AiiA – Nền tảng Data Lakehouse hồ sơ 360°.png>)
   - Mã nguồn sơ đồ: [assets/mindmaps](assets/mindmaps), [scripts/mindmap_to_svg.py](scripts/mindmap_to_svg.py).
 - **Kiến trúc:** [C4](#5-kiến-trúc-c4), [Quyết định kiến trúc](#54-quyết-định-kiến-trúc).
-- **Cơ sở dữ liệu:** [ER và từ điển dữ liệu](docs/DATABASE.md), [DBML](src/database/aiia.dbml), [PostgreSQL schema](src/database/aiia.sql).
+- **Cơ sở dữ liệu:** [Mô hình dữ liệu](docs/05-data-model.md), [ER và từ điển dữ liệu](docs/DATABASE.md), [DBML](src/database/aiia.dbml), [PostgreSQL schema](src/database/aiia.sql).
 - **Hợp đồng API:** [OpenAPI 3.0.4](docs/api/openapi.yaml).
+- **Vận hành:** [Hướng dẫn chạy](docs/RUNNING.md).
 
 ## Tiến độ dự án
 

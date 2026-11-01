@@ -1,0 +1,51 @@
+# syntax=docker/dockerfile:1.7
+
+# ==============================================================================
+# Image for the AiiA data pipelines (src/pipelines, uv project): Dagster dev server
+# + dlt + PyIceberg + Soda + dbt-trino. Chạy dev; production tách webserver và daemon.
+#
+#     docker build -f dockerfiles/Dockerfile.pipelines -t aiia-pipelines .
+#
+# Layout and caching follow Dockerfile.backend (see notes there).
+# ==============================================================================
+
+ARG PYTHON_VERSION=3.12
+
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS builder
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0
+
+WORKDIR /app
+
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    --mount=type=bind,source=src/pipelines/uv.lock,target=uv.lock \
+    --mount=type=bind,source=src/pipelines/pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-dev --no-install-project
+
+
+FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+
+RUN groupadd --system app && useradd --system --gid app --uid 1000 --create-home app
+
+WORKDIR /app
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DAGSTER_HOME=/app/.dagster
+
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
+COPY --chown=app:app src/pipelines/aiia_dagster ./aiia_dagster
+COPY --chown=app:app src/pipelines/dbt ./dbt
+COPY --chown=app:app src/pipelines/soda ./soda
+
+# Thư mục ghi được: home của Dagster, target/logs của dbt.
+RUN mkdir -p /app/.dagster /app/dbt/target /app/dbt/logs && chown -R app:app /app/.dagster /app/dbt
+
+USER app
+
+EXPOSE 3000
+
+CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "aiia_dagster.definitions"]

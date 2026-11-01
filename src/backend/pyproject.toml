@@ -1,0 +1,25 @@
+[project]
+name = "aiia-backend"
+version = "0.1.0"
+description = "AiiA Platform API (FastAPI) và worker (Celery)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "psycopg[binary]>=3.2,<4",
+    "celery[redis]>=5.4,<6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+    "httpx>=0.27,<1",
+]
+
+[tool.uv]
+# Dự án đơn, không cài chính nó thành package: mã nguồn được copy trực tiếp vào image.
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

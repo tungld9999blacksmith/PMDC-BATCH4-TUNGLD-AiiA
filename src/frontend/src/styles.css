@@ -1,0 +1,20 @@
+:root {
+  --color-text: #0f172a;
+  --color-muted: #475569;
+  --color-accent: #1864ab;
+  --color-ok: #2b8a3e;
+  --color-warn: #e8590c;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--color-text);
+  background: #ffffff;
+}
+
+main {
+  padding: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+}

@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: silver_sis_students
+    columns:
+      - name: student_id
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: [STUDYING, RESERVED, GRADUATED, DROPPED]
+
+  - name: dim_student
+    columns:
+      - name: student_id
+        tests: [unique, not_null]

@@ -1,0 +1,59 @@
+AiiA\nData Lakehouse hồ sơ 360°
+  Tích hợp dữ liệu
+    Đăng ký nguồn được phép
+      Mục đích và căn cứ chia sẻ
+      Owner nghiệp vụ
+      Mức nhạy cảm nguồn
+    Ingest
+      Upload file CSV/Excel
+      Kết nối CSDL qua JDBC
+      Kết nối API
+      Lập lịch batch
+    Giám sát pipeline
+      Lịch sử lần chạy
+      Log và số dòng
+      Chạy lại idempotent
+  Lưu trữ Lakehouse
+    Bronze – dữ liệu thô bất biến
+    Silver – dữ liệu chuẩn hóa
+    Gold – mô hình phân tích
+    Open table format có versioning
+  Hồ sơ 360°
+    Đối soát danh tính
+      Khớp tự động
+      Hàng đợi duyệt thủ công
+      Gộp và tách bản ghi
+    Golden record
+      Ưu tiên nguồn
+      Nguồn gốc từng thuộc tính
+    Hồ sơ theo vai trò
+      Sinh viên
+      Giảng viên
+      Cán bộ
+    Dòng thời gian sự kiện
+  Quản trị dữ liệu
+    Chất lượng dữ liệu
+      Quy tắc 5 chiều
+      Cách ly bản ghi lỗi
+      Điểm DQ và issue
+    Danh mục dữ liệu
+      Data catalog
+      Business glossary
+      Phân loại nhạy cảm
+    Bảo mật và tuân thủ
+      RBAC
+      Phân quyền dòng và cột [ADV]
+      Yêu cầu và phê duyệt truy cập
+      Audit log
+    Lineage [ADV]
+  Phân tích và BI
+    Dashboard BI
+      Bộ lọc toàn cục
+      Drill-down
+      Export có watermark
+    Semantic model [ADV]
+      Metric chuẩn hóa
+      Dimension dùng chung
+    Báo cáo tự động [ADV]
+    Phát hiện bất thường [ADV]
+    Trợ lý hỏi-đáp [ADV]

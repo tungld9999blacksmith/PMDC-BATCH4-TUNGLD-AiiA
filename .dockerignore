@@ -1,0 +1,18 @@
+# Ngữ cảnh build là thư mục gốc repo: loại trừ những gì không cần đưa vào image.
+.git
+.env
+.env.*
+!.env.example
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/node_modules
+**/dist
+**/.angular
+**/.dagster
+**/dbt/target
+**/dbt/logs
+docs
+artifacts
+infra

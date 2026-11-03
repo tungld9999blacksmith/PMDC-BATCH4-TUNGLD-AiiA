@@ -1,0 +1,70 @@
+<div class="page">
+  <aiia-page-header title="Trợ lý hỏi-đáp" [adv]="true" subtitle="Trả lời bằng chỉ số đã chứng nhận, chạy trong phạm vi quyền của bạn, luôn kèm nguồn và truy vấn để kiểm chứng." />
+  @if (demo) {
+    <div class="banner info small demo-note">Chế độ demo: trợ lý mô phỏng (không gọi LLM thật) nhưng giữ đúng luồng kiểm tra quyền, chọn metric và diễn giải kết quả tổng hợp.</div>
+  }
+  <div class="layout">
+    <aside class="card history" aria-label="Hội thoại">
+      <button type="button" class="btn primary" (click)="newConversation()">+ Hội thoại mới</button>
+      <ul>
+        @for (c of conversations(); track c.id) {
+          <li>
+            <a [routerLink]="['/assistant', c.id]" [class.active]="c.id === conversationId()">
+              <span class="title">{{ c.title }}</span>
+              <span class="small muted">{{ c.createdAt | relTime }}</span>
+            </a>
+          </li>
+        } @empty {
+          <li class="small muted">Chưa có hội thoại.</li>
+        }
+      </ul>
+    </aside>
+
+    <section class="card chat">
+      <div class="messages" #scroller>
+        @if (loading()) {
+          <aiia-state kind="loading" />
+        } @else {
+          @for (m of messages(); track m.id) {
+            @if (m.role === 'USER') {
+              <div class="user-msg"><p>{{ m.content }}</p></div>
+            } @else {
+              <aiia-answer-card [message]="m" [stage]="m.id === -1 ? stage() : null" (clarify)="onClarify($event)" (rate)="rate(m, $event)" (requestAccess)="requestAccess()" />
+            }
+          } @empty {
+            <div class="welcome">
+              <h2>Bạn muốn biết điều gì?</h2>
+              <p class="muted">Hỏi bằng tiếng Việt về chỉ số đào tạo, giảng dạy, nghiên cứu. Trợ lý không trả danh sách cá nhân hay thông tin định danh.</p>
+              <div class="row" style="justify-content: center">
+                @for (s of suggestions(); track s) {
+                  <button type="button" class="chip selectable" (click)="useSuggestion(s)">{{ s }}</button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+      <form class="composer" (ngSubmit)="submit()">
+        <textarea
+          class="input"
+          name="draft"
+          rows="2"
+          aria-label="Câu hỏi"
+          placeholder="VD: Tỉ lệ cảnh báo học vụ của khoa CNTT theo học kỳ năm 2025-2026?"
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+          (keydown.enter)="$event.preventDefault(); submit()"
+        ></textarea>
+        <button type="submit" class="btn primary" [disabled]="asking() || !draft().trim()">Gửi</button>
+      </form>
+      @if (messages().length && suggestions().length) {
+        <div class="row small" style="padding: 0 12px 12px">
+          <span class="muted">Gợi ý:</span>
+          @for (s of suggestions().slice(0, 3); track s) {
+            <button type="button" class="chip selectable" (click)="useSuggestion(s)">{{ s }}</button>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</div>

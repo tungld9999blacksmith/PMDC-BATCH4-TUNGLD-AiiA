@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Dữ liệu thô từ landing, append-only. Chứa CCCD gốc (RESTRICTED), chỉ truy cập ở tầng này.
+    schema: bronze
+    tables:
+      - name: sis_students

@@ -1,0 +1,87 @@
+<header class="topbar">
+  <button type="button" class="btn ghost sm menu-toggle" aria-label="Mở menu" (click)="navOpen.set(!navOpen())">☰</button>
+  <a routerLink="/" class="brand" aria-label="AiiA — trang chủ"><span class="logo">◆</span> AiiA</a>
+  <button type="button" class="search" (click)="searchOpen.set(true)" aria-label="Tìm kiếm (Ctrl+K)">
+    <span aria-hidden="true">🔍</span>
+    <span class="search-text">Tìm hồ sơ, dataset, dashboard…</span>
+    <kbd>Ctrl K</kbd>
+  </button>
+  <span class="spacer"></span>
+  @if (demo) {
+    <span class="chip warn demo" title="Mock API trong trình duyệt, dữ liệu tổng hợp">Chế độ demo</span>
+  }
+  @if (canAsk()) {
+    <a class="btn primary sm" routerLink="/assistant">✦ Hỏi AiiA</a>
+  }
+  <div class="pop">
+    <button type="button" class="btn ghost sm bell" (click)="bellOpen.set(!bellOpen()); menuOpen.set(false)" [attr.aria-expanded]="bellOpen()" aria-label="Thông báo">
+      🔔
+      @if (unread()) {
+        <span class="count">{{ unread() }}</span>
+      }
+    </button>
+    @if (bellOpen()) {
+      <div class="dropdown" role="menu">
+        <div class="dropdown-head small muted">Thông báo</div>
+        @for (n of notifications(); track n.id) {
+          <button type="button" class="dropdown-item" [class.unread]="!n.readAt" (click)="openNotification(n)">
+            <span>{{ n.title }}</span>
+            <span class="small muted">{{ n.createdAt | relTime }}</span>
+          </button>
+        } @empty {
+          <p class="small muted" style="padding: 8px 12px">Chưa có thông báo.</p>
+        }
+      </div>
+    }
+  </div>
+  <div class="pop">
+    <button type="button" class="btn ghost sm user" (click)="menuOpen.set(!menuOpen()); bellOpen.set(false)" [attr.aria-expanded]="menuOpen()">
+      <span class="avatar" aria-hidden="true">{{ (session.me()?.fullName ?? '?').split(' ').slice(-1)[0][0] }}</span>
+      <span class="user-name">{{ session.me()?.fullName }}</span> ▾
+    </button>
+    @if (menuOpen()) {
+      <div class="dropdown" role="menu">
+        <div class="dropdown-head">
+          <strong>{{ session.me()?.fullName }}</strong>
+          <div class="small muted">{{ roleText() }}</div>
+        </div>
+        <a class="dropdown-item" routerLink="/me">Hồ sơ & quyền của tôi</a>
+        <a class="dropdown-item" routerLink="/access">Yêu cầu truy cập</a>
+        <button type="button" class="dropdown-item" (click)="logout()">Đăng xuất</button>
+      </div>
+    }
+  </div>
+</header>
+
+<div class="body">
+  <aside class="sidebar" [class.open]="navOpen()" aria-label="Điều hướng chính">
+    <nav>
+      @for (g of nav(); track g.label) {
+        @if (g.label) {
+          <div class="group">{{ g.label }}</div>
+        }
+        @for (i of g.items; track i.link) {
+          <a class="nav-item" [routerLink]="i.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!i.exact }">
+            {{ i.label }}
+            @if (i.adv) {
+              <span class="adv" title="Phạm vi nâng cao">ADV</span>
+            }
+          </a>
+        }
+      }
+    </nav>
+  </aside>
+  @if (navOpen()) {
+    <div class="nav-backdrop" (click)="navOpen.set(false)" aria-hidden="true"></div>
+  }
+  <main class="content" id="main">
+    <router-outlet />
+  </main>
+</div>
+
+@if (searchOpen()) {
+  <aiia-global-search (closed)="searchOpen.set(false)" />
+}
+<aiia-toasts />
+<aiia-confirm-host />
+<aiia-request-access />

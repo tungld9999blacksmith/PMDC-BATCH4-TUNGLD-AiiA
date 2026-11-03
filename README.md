@@ -660,6 +660,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P02 – Trang chủ theo vai trò
 
+![P02 · Trang chủ theo vai trò (Report Viewer)](./assets/prototypes/Report-Viewer.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Lời chào và tìm kiếm nhanh** | Ô tìm kiếm hồ sơ/dataset/dashboard và ô “Hỏi AiiA” [ADV]. |
@@ -688,6 +690,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P05 – Tìm kiếm hồ sơ 360°
 
+![P05 · Tìm kiếm hồ sơ 360°](./assets/prototypes/P05.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Thanh tìm kiếm** | Tìm theo mã, họ tên, email; gợi ý tức thì sau 2 ký tự (debounce 300 ms). |
@@ -696,6 +700,10 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Phản hồi trạng thái** | Đang tải, không có kết quả (gợi ý xóa bộ lọc), lỗi kèm nút thử lại. |
 
 ##### P06 – Chi tiết hồ sơ 360°
+
+![P06 · Chi tiết hồ sơ 360° (sáng)](./assets/prototypes/Profile-360-Light.png)
+
+![P06 · Chi tiết hồ sơ 360° (tối)](./assets/prototypes/Profile-360-Dark.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -711,6 +719,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P07 – Thư viện dashboard
 
+![P07 · Thư viện dashboard](./assets/prototypes/P07.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Thanh công cụ** | Tìm kiếm, lọc theo chủ đề (Đào tạo, Nhân sự, Nghiên cứu, Tài chính, Chất lượng dữ liệu), nút “Tạo dashboard” (Analyst). |
@@ -718,6 +728,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Phản hồi trạng thái** | Chưa có dashboard được chia sẻ → hướng dẫn liên hệ/yêu cầu quyền. |
 
 ##### P08 – Xem dashboard
+
+![P08 · Xem dashboard](./assets/prototypes/P08.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -730,6 +742,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P09 – Thiết kế dashboard
 
+![P09 · Thiết kế dashboard](./assets/prototypes/P09.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Thanh trên** | Tên dashboard, trạng thái nháp/đã publish, Lưu, Xem trước, Publish, Chia sẻ. |
@@ -741,6 +755,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P10 – Semantic model [ADV]
 
+![P10 · Semantic model [ADV]](./assets/prototypes/P10.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Danh sách metric/dimension** | Tên, định nghĩa, owner, trạng thái `DRAFT`/`CERTIFIED`/`DEPRECATED`, số dashboard sử dụng. |
@@ -750,6 +766,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P11 – Báo cáo tự động [ADV]
 
+![P11 · Báo cáo tự động [ADV]](./assets/prototypes/P11.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Danh sách đăng ký** | Dashboard, tần suất, định dạng, người nhận, lần gửi gần nhất/kế tiếp, trạng thái. |
@@ -757,6 +775,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Lịch sử gửi** | Thời điểm, kết quả, xem lại bản báo cáo đã gửi (theo quyền người xem). |
 
 ##### P12 – Trợ lý hỏi-đáp [ADV]
+
+![P12 · Trợ lý hỏi-đáp [ADV]](./assets/prototypes/P12.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -778,6 +798,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P14 – Đăng ký / cấu hình nguồn
 
+![P14 · Đăng ký / cấu hình nguồn](./assets/prototypes/P14.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Bước 1 – Thông tin & căn cứ** | Tên, mô tả, owner nghiệp vụ, mục đích, căn cứ cho phép (số văn bản, tệp đính kèm), đối tượng dữ liệu, mức nhạy cảm. |
@@ -788,6 +810,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P15 – Giám sát pipeline
 
+![P15 · Giám sát pipeline](./assets/prototypes/P15.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Tổng quan** | Số run hôm nay theo trạng thái, tỉ lệ thành công 7 ngày, thời lượng trung bình. |
@@ -795,6 +819,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Drawer chi tiết run** | Các bước (Bronze → DQ → Silver → Gold) dạng stepper, log theo thời gian thực, kết quả DQ, nút Chạy lại, Xem quarantine. |
 
 ##### P16 – Data explorer
+
+![P16 · Data explorer](./assets/prototypes/P16.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -806,6 +832,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P17 – Data catalog
 
+![P17 · Data catalog](./assets/prototypes/P17.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Tìm kiếm và facet** | Từ khóa; facet theo lớp, nguồn, owner, tag, mức nhạy cảm, có quyền/chưa có quyền. |
@@ -813,6 +841,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Glossary (tab)** | Danh sách thuật ngữ, định nghĩa, liên kết cột/metric; Steward thêm/sửa. |
 
 ##### P18 – Chi tiết dataset
+
+![P18 · Chi tiết dataset](./assets/prototypes/P18.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -825,12 +855,16 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P19 – Quy tắc chất lượng
 
+![P19 · Quy tắc chất lượng](./assets/prototypes/P19.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Danh sách quy tắc** | Dataset, cột, loại, chiều, mức, trạng thái, tỉ lệ đạt gần nhất; lọc và tìm kiếm. |
 | **Trình soạn quy tắc (drawer)** | Chọn dataset/cột, loại quy tắc, tham số/ngưỡng, mức `BLOCKING`/`WARNING`, mô tả; nút Chạy thử hiển thị số bản ghi vi phạm và mẫu; Kích hoạt. |
 
 ##### P20 – Chất lượng & issue
+
+![P20 · Chất lượng & issue](./assets/prototypes/P20.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -841,6 +875,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P21 – Đối soát danh tính
 
+![P21 · Đối soát danh tính](./assets/prototypes/P21.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Hàng đợi** | Cặp ứng viên, điểm khớp, nguồn, ngày phát hiện; sắp xếp, lọc theo khoảng điểm/nguồn. |
@@ -849,6 +885,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Lịch sử gộp/tách** | Tìm `person_id`, xem lịch sử, nút Tách (unmerge) kèm xác nhận. |
 
 ##### P22 – Lineage [ADV]
+
+![P22 · Lineage [ADV]](./assets/prototypes/P22.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -859,6 +897,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P23 – Cảnh báo bất thường [ADV]
 
+![P23 · Cảnh báo bất thường [ADV]](./assets/prototypes/P23.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Bộ lọc** | Loại (volume, freshness, metric), mức độ, trạng thái, đối tượng. |
@@ -866,6 +906,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Drawer cảnh báo** | Biểu đồ chuỗi thời gian có dải kỳ vọng và điểm bất thường; liên kết run/dataset/dashboard; Xác nhận, Đã xử lý, Bỏ qua kèm ghi chú. |
 
 ##### P24 – Yêu cầu truy cập
+
+![P24 · Yêu cầu truy cập](./assets/prototypes/P24.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -885,6 +927,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 
 ##### P26 – Chính sách phân quyền [ADV]
 
+![P26 · Chính sách phân quyền [ADV]](./assets/prototypes/P26.png)
+
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
 | **Danh sách chính sách** | Tên, vai trò áp dụng, dataset, loại (dòng/cột), phiên bản, người sửa cuối. |
@@ -893,6 +937,8 @@ Mỗi Section là một khối nội dung giao diện; các nút, biểu mẫu v
 | **Lịch sử phiên bản** | So sánh, khôi phục. |
 
 ##### P27 – Nhật ký kiểm toán
+
+![P27 · Nhật ký kiểm toán](./assets/prototypes/P27.png)
 
 | Section | Mô tả nội dung và chức năng |
 | --- | --- |
@@ -1014,6 +1060,9 @@ P27 Nhật ký kiểm toán → lọc → xem chi tiết → tab Hỏi-đáp →
 
 ### 4.2. Bố cục khung ứng dụng (App Shell)
 
+![App Shell · Bố cục khung ứng dụng (Profile 360°)](./assets/prototypes/Profile-360-Light.png)
+
+> 🎨 **Thiết kế Figma:** [App Shell · P05 · Tìm kiếm hồ sơ 360°](https://www.figma.com/design/NycBZgxgrAcc0uYT2Fbz5t/Untitled?node-id=17-95)
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ ◆ AiiA   [🔍 Tìm hồ sơ, dataset, dashboard…   ]   [✦ Hỏi AiiA]   🔔3   👤 ▾ │
@@ -1070,6 +1119,9 @@ Sơ đồ liệt kê **các tương tác người dùng** (hành động + phả
 
 **P06 – Chi tiết hồ sơ 360° (Sinh viên)**
 
+> 🎨 **Thiết kế Figma:** [P06 · Chi tiết hồ sơ 360°](https://www.figma.com/design/NycBZgxgrAcc0uYT2Fbz5t/Untitled?node-id=2-51)
+
+![P06 · Chi tiết hồ sơ 360°](./assets/prototypes/Profile-360-Light.png)
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ (NA)  Nguyễn Văn A   SV2021001 · K66 · Khoa CNTT · Đang học   [SV ▾ | CB]   │
@@ -1091,6 +1143,9 @@ Sơ đồ liệt kê **các tương tác người dùng** (hành động + phả
 
 **P08 – Xem dashboard**
 
+> 🎨 **Thiết kế Figma:** [P08 · Xem dashboard](https://www.figma.com/design/NycBZgxgrAcc0uYT2Fbz5t/Untitled?node-id=18-268)
+
+![P08 · Xem dashboard](./assets/prototypes/P08.png)
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ Tổng quan đào tạo   · Cập nhật 06:00 hôm nay · DQ 97%     [⤓ Export][✉][✦]  │
@@ -1110,6 +1165,9 @@ Sơ đồ liệt kê **các tương tác người dùng** (hành động + phả
 
 **P12 – Trợ lý hỏi-đáp [ADV]**
 
+> 🎨 **Thiết kế Figma:** [P12 · Trợ lý hỏi-đáp](https://www.figma.com/design/NycBZgxgrAcc0uYT2Fbz5t/Untitled?node-id=19-449)
+
+![P12 · Trợ lý hỏi-đáp](./assets/prototypes/P12.png)
 ```text
 ┌───────────────┬──────────────────────────────────────────────────────────────┐
 │ + Hội thoại   │ 👤 Tỉ lệ cảnh báo học vụ của khoa CNTT theo học kỳ năm 2025? │
@@ -1130,6 +1188,9 @@ Sơ đồ liệt kê **các tương tác người dùng** (hành động + phả
 
 **P21 – Đối soát danh tính**
 
+> 🎨 **Thiết kế Figma:** [P21 · Đối soát danh tính](https://www.figma.com/design/NycBZgxgrAcc0uYT2Fbz5t/Untitled?node-id=21-1042)
+
+![P21 · Đối soát danh tính](./assets/prototypes/P21.png)
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ Hàng đợi: 37 cặp chờ duyệt     Điểm [0,75–0,95 ▾]  Nguồn [Tất cả ▾]          │
@@ -1241,6 +1302,8 @@ flowchart TD
 | Nhóm nhỏ | Giá trị “< 5” thay cho số thật | Tooltip giải thích quy tắc bảo vệ |
 
 ### 4.8. Ngôn ngữ thị giác
+
+![Thư viện thành phần (Component Library)](./assets/prototypes/Component-Library.png)
 
 | Thành phần | Quy ước |
 | --- | --- |
